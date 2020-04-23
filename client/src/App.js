@@ -1,25 +1,34 @@
 import React from 'react';
-import logo from './logo.svg';
+import pokerTableImg from './static/pokertable.svg';
+import card from './static/10C.svg';
 import './App.css';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="ctn-app">
+      <div className="border-elem-left"/>
+      <div className="ctn-middle">
+        <div className="ctn-table">
+          <img className="test" alt="" src={pokerTableImg}/>
+
+          <div className="ctn-my-hand">
+            <img alt="" src={card}/>
+            <img className="mod-right-card" alt="" src={card}/>
+          </div>
+
+          <div className="ctn-ctr-cards">
+            <img alt="" src={card}/>
+            <img className="mod-right-card" alt="" src={card}/>
+            <img className="mod-right-card" alt="" src={card}/>
+            <img className="mod-right-card" alt="" src={card}/>
+            <img className="mod-right-card" alt="" src={card}/>
+          </div>
+        </div>
+        <div className="bottom-border-elem"/>
+      </div>
+      <div className="border-elem"></div>
     </div>
+    
   );
 }
 
