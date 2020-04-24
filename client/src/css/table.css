@@ -1,0 +1,112 @@
+.call-button {
+  min-width: 100px;
+  max-width: 100;
+  min-height: 200px;
+  max-height: 200px;
+  position: absolute;
+  left:10px;
+  bottom: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 25px;
+
+}
+
+.check-button {
+  min-width: 100px;
+  max-width: 100;
+  min-height: 200px;
+  max-height: 200px;
+  position: absolute;
+  left:10px;
+  bottom: 70px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 25px;
+}
+
+.fold-button {
+  min-width: 100px;
+  max-width: 100;
+  min-height: 200px;
+  max-height: 200px;
+  position: absolute;
+  left:120px;
+  bottom: 70px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 25px;
+}
+
+.raise-button {
+  min-width: 100px;
+  max-width: 100;
+  min-height: 200px;
+  max-height: 200px;
+  position: absolute;
+  left:120px;
+  bottom: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 25px;
+}
+
+.player-balance {
+  font-size: 60px;
+  color: #DAA520;
+  position: absolute;
+  bottom: 20px;
+  left: 750px;
+  margin: 0;
+}
+
+.pot {
+  font-size: 60px;
+  color: #DAA520;
+  position: absolute;
+  bottom: 250px;
+  left: 450px;
+  margin: 0;
+}
+
+.raise-form {
+  min-width: 150px;
+  max-width: 150px;
+  min-height: 25px;
+  max-height: 25px;
+  position: absolute;
+  left:230px;
+  bottom: 11px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 20px;
+}
+
+.ctn-table {
+  margin-bottom: -3px;
+  position: relative;
+}
+
+.mod-right-card {
+  margin-left: 10px;
+}
+
+.ctn-ctr-cards {
+  min-width: 540px;
+  max-width: 210px;
+  min-height: 100px;
+  max-height: 100px;
+  position: absolute;
+  left:275px;
+  bottom: 400px;
+}
+
+.ctn-my-hand {
+  min-width: 210px;
+  max-width: 210px;
+  min-height: 100px;
+  max-height: 100px;
+  position: absolute;
+  left:450px;
+  bottom: 50px;
+}
