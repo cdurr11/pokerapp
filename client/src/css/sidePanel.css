@@ -1,0 +1,33 @@
+.ctn-opponent-sidepanel {
+  background-color: rgb(184, 184, 184);
+  min-width: 325px;
+  max-width: 325px;
+  height: 100vh;
+}
+
+.ctn-opponent-tile {
+  min-height : 110px;
+  max-height : 110px;
+  display: flex;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid black;
+}
+
+.ctn-opponent-moneyname {
+  min-width: 162px;
+  max-width: 162px;
+}
+
+.mod-opponent-name {
+  margin-left: 10px;
+}
+
+.mod-opponent-money {
+  padding-top: 20px;
+  margin-left: 10px;
+}
+
+.opponent-card-right {
+  margin-left: 2px;
+}
