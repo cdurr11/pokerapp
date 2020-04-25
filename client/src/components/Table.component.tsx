@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
-import CommunityCards from "./CommunityCards.component.tsx"
-import MyHand from "./MyHand.component.tsx"
+import CommunityCards from "./CommunityCards.component"
+import MyHand from "./MyHand.component"
 import pokerTableImg from '../static/pokertable.svg';
 import '../css/table.css';
 

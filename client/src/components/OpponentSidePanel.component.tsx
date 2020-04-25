@@ -1,5 +1,5 @@
 import React, {Component} from 'react';
-import OpponentTile from "./OpponentTile.component.tsx"
+import OpponentTile from "./OpponentTile.component"
 import '../css/sidePanel.css'
 
 class OpponentSidePanel extends Component {

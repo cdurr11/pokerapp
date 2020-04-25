@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import '../css/app.css';
-import OpponentSidePanel from './OpponentSidePanel.component.tsx';
-import Table from "./Table.component.tsx"
+import OpponentSidePanel from './OpponentSidePanel.component';
+import Table from "./Table.component"
 
 class App extends Component {
 
