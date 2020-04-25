@@ -3,8 +3,8 @@ import '../css/app.css';
 import OpponentSidePanel from './OpponentSidePanel.component';
 import Table from "./Table.component"
 
-class App extends Component {
 
+class App extends Component {
   render(): JSX.Element {
     return (
       <div className="ctn-app">
@@ -16,8 +16,6 @@ class App extends Component {
         <div className="border-elem"></div>
       </div>
     );
-  }
-  
+  } 
 }
-
 export default App;
