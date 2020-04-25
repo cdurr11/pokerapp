@@ -6,8 +6,9 @@ public class Player {
     
     private float stackSize;
 
-    private final Card left;
-    private final Card right;
+    private Card left;
+    private Card right;
+    private Deck deck;
     
     
     private final boolean inPlay;
@@ -28,19 +29,24 @@ public class Player {
      * @param Right Card Object
      * @param val passed in value of the card value
      */
-    public Player(String id, Card left, Card right, float stackSize, boolean inPlay){
+    public Player(String id, float stackSize, boolean inPlay){
     	this.id = id;
-        this.left = left;
-        this.right = right;
         this.stackSize = stackSize;
         this.inPlay = inPlay;
+        this.deck = new Deck();
 
     }
+    
+    
     
     private void checkRep() {
         assert this.stackSize >= 0;
     }
 
+	public void drawHand() {
+		right = deck.drawCard();
+    	left = deck.drawCard();		
+	}
     /**
      * @return the row 
      */
@@ -80,6 +86,7 @@ public class Player {
     public String getName() {
         return id;
     }
+
     
     
     
