@@ -15,7 +15,7 @@ class Table extends Component {
         <button className="fold-button mod-unselectable">Fold</button>
         <button disabled={true} className="raise-button mod-unselectable">Raise</button>
         <input placeholder="RAISE AMT" className="raise-form"></input>
-        <p className="player-balance mod-unselectable">$100</p>
+        <p className="player-balance mod-unselectable">$20</p>
         <p className="pot mod-unselectable">$20.00</p>
         <MyHand/>
         <CommunityCards/>
