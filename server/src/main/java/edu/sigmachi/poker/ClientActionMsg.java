@@ -3,7 +3,7 @@ package edu.sigmachi.poker;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-public class ClientRoundMsg {
+public class ClientActionMsg {
   
   public enum Actions {CALL, CHECK, FOLD, RAISE};
   
@@ -11,11 +11,11 @@ public class ClientRoundMsg {
   private String action;
   private String raiseAmount; 
   
-  public ClientRoundMsg() {
+  public ClientActionMsg() {
     
   }
   
-  public ClientRoundMsg(String playerName, String action, String raiseAmount) {
+  public ClientActionMsg(String playerName, String action, String raiseAmount) {
     this.playerName = playerName;
     this.action = action;
     this.raiseAmount = raiseAmount;

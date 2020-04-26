@@ -12,7 +12,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import edu.sigmachi.poker.ClientRoundMsg.Actions;
+import edu.sigmachi.poker.ClientActionMsg.Actions;
 
 public class TestMessages {
 
@@ -21,7 +21,7 @@ public class TestMessages {
    */
   @Test
   public void testClientRoundMsgSetters() {
-    ClientRoundMsg msg = new ClientRoundMsg();
+    ClientActionMsg msg = new ClientActionMsg();
 
     msg.setAction("FOLD");
     assertEquals(Actions.FOLD, msg.getAction());
@@ -48,7 +48,7 @@ public class TestMessages {
    */
   @Test
   public void testClientRoundMsgFullConstructor() {
-    ClientRoundMsg msg = new ClientRoundMsg("cdurr", "RAISE", "1.00");
+    ClientActionMsg msg = new ClientActionMsg("cdurr", "RAISE", "1.00");
     assertEquals(new BigDecimal("1.00"), msg.getRaiseAmount());
     assertEquals("cdurr", msg.getPlayerName());
     assertEquals(Actions.RAISE, msg.getAction());
@@ -59,7 +59,7 @@ public class TestMessages {
    */
   @Test(expected = AssertionError.class)
   public void testClientRoundMsgFullRaiseError() {
-    ClientRoundMsg msg = new ClientRoundMsg("cdurr", "RAISE", "");
+    ClientActionMsg msg = new ClientActionMsg("cdurr", "RAISE", "");
     msg.getRaiseAmount();
   }
 
@@ -132,7 +132,7 @@ public class TestMessages {
     BigDecimal mainPotValue = new BigDecimal("1000.00");
     BigDecimal sidePotValue = new BigDecimal("500.00");
     
-    ServerRoundMsg msg = new ServerRoundMsg(playerBalances,currentBets,currentTurn,
+    ServerActionResponseMsg msg = new ServerActionResponseMsg(playerBalances,currentBets,currentTurn,
         communityCards, mainPotContenders,mainPotValue,sidePotContenders,sidePotValue);
     
     Map<String, BigDecimal> returnPlayerBalances = msg.getPlayerBalances();

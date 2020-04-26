@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ServerRoundMsg {
+public class ServerActionResponseMsg {
   private Map<String, BigDecimal> playersToBalances;
   private Map<String, BigDecimal> playersToBets;
   private String currentTurn;
@@ -17,11 +17,11 @@ public class ServerRoundMsg {
   private BigDecimal sidePotValue;
   
   
-  public ServerRoundMsg() {
+  public ServerActionResponseMsg() {
     
   }
   
-  public ServerRoundMsg(Map<String, BigDecimal> playersToBalances, Map<String, BigDecimal> playersToBets, 
+  public ServerActionResponseMsg(Map<String, BigDecimal> playersToBalances, Map<String, BigDecimal> playersToBets, 
       String currentTurn, List<String> communityCards,
       List<String> mainPotContenders, BigDecimal mainPotValue, 
       List<String> sidePotContenders, BigDecimal sidePotValue) {
