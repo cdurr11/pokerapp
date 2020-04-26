@@ -1,12 +1,14 @@
 package edu.sigmachi.poker;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ServerRoundMsg {
-  private Map<String, BigDecimal> playerBalance;
-  private Map<String, BigDecimal> currentBets;
+  private Map<String, BigDecimal> playersToBalances;
+  private Map<String, BigDecimal> playersToBets;
   private String currentTurn;
   private List<String> communityCards;
   private List<String> mainPotContenders;
@@ -19,13 +21,13 @@ public class ServerRoundMsg {
     
   }
   
-  public ServerRoundMsg(Map<String, BigDecimal> playerBalance, Map<String, BigDecimal> currentBets, 
+  public ServerRoundMsg(Map<String, BigDecimal> playersToBalances, Map<String, BigDecimal> playersToBets, 
       String currentTurn, List<String> communityCards,
       List<String> mainPotContenders, BigDecimal mainPotValue, 
       List<String> sidePotContenders, BigDecimal sidePotValue) {
     
-    this.playerBalance = playerBalance;
-    this.currentBets = currentBets;
+    this.playersToBalances = playersToBalances;
+    this.playersToBets = playersToBets;
     this.currentTurn = currentTurn;
     this.communityCards = communityCards;
     this.mainPotContenders = mainPotContenders;
@@ -35,12 +37,20 @@ public class ServerRoundMsg {
   }
   
   
-  public Map<String, BigDecimal> getPlayerBalance() {
-    return this.playerBalance;
+  public Map<String, BigDecimal> getPlayerBalances() {
+    Map<String, BigDecimal> mapCopy = 
+        this.playersToBalances.entrySet().stream()
+        .collect(Collectors.toMap(e -> e.getKey(), e -> new BigDecimal(e.getValue().toString())));
+    
+    return mapCopy;
   }
   
-  public Map<String, BigDecimal> getCurrentBet() {
-    return this.currentBets;
+  public Map<String, BigDecimal> getCurrentBets() {
+    Map<String, BigDecimal> mapCopy = 
+        this.playersToBets.entrySet().stream()
+        .collect(Collectors.toMap(e -> e.getKey(), e -> new BigDecimal(e.getValue().toString())));
+    
+    return mapCopy;
   }
   
   public String getCurrentTurn() {
@@ -48,22 +58,25 @@ public class ServerRoundMsg {
   }
   
   public List<String> getCommunityCards() {
-    return this.communityCards;
+    List<String> listCopy = new ArrayList<String>(this.communityCards);
+    return listCopy;
   }
   
   public List<String> getMainPotContenders() {
-    return this.mainPotContenders;
+    List<String> listCopy = new ArrayList<String>(this.mainPotContenders);
+    return listCopy;
   }
   
-  public BigDecimal getMainPotValues() {
-    return this.mainPotValue;
+  public BigDecimal getMainPotValue() {
+    return new BigDecimal(this.mainPotValue.toString());
   }
   
   public List<String> getSidePotContenders() {
-    return this.sidePotContenders;
+    List<String> listCopy = new ArrayList<String>(this.sidePotContenders);
+    return listCopy;
   }
   
   public BigDecimal getSidePotValue() {
-    return this.sidePotValue;
+    return new BigDecimal(this.sidePotValue.toString());
   }
 }

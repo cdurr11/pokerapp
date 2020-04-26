@@ -1,10 +1,11 @@
 package edu.sigmachi.poker;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class ClientRoundMsg {
   
-  enum actions {CALL, CHECK, FOLD, RAISE};
+  public enum Actions {CALL, CHECK, FOLD, RAISE};
   
   private String playerName;
   private String action;
@@ -32,19 +33,19 @@ public class ClientRoundMsg {
     this.raiseAmount = raiseAmount;
   }
   
-  public actions getAction() {
+  public Actions getAction() {
     switch (this.action) {
       case "CALL":
-        return actions.CALL;
+        return Actions.CALL;
       
       case "CHECK":
-        return actions.CHECK;
+        return Actions.CHECK;
         
       case "FOLD":
-        return actions.FOLD;
+        return Actions.FOLD;
       
-      case "Raise":
-        return actions.RAISE;
+      case "RAISE":
+        return Actions.RAISE;
         
       default:
         throw new RuntimeException("Should Select an Action Case");
@@ -55,8 +56,12 @@ public class ClientRoundMsg {
     return this.playerName;
   }
   
-  //TODO probs should handle some kind of error here
   public BigDecimal getRaiseAmount() {
-    return new BigDecimal(raiseAmount);
+    // We should only have a raise amount when we are raising or else ""
+    assert ((!raiseAmount.equals("") && this.action.equals("RAISE")) ||
+             (raiseAmount.equals("") && !this.action.equals("RAISE")));
+    BigDecimal bigDecimalRaiseAmount = new BigDecimal(raiseAmount);
+    bigDecimalRaiseAmount = bigDecimalRaiseAmount.setScale(2, RoundingMode.CEILING);
+    return bigDecimalRaiseAmount;
   }
 }

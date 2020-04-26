@@ -1,12 +1,14 @@
 package edu.sigmachi.poker;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class StartOfRoundMsg {
-  private Map<String, BigDecimal> playerToBalances;
-  private Map<String, List<String>> playerToCards;
+  private Map<String, BigDecimal> playersToBalances;
+  private Map<String, List<String>> playersToCards;
   private List<String> communityCards;
   private String bigBlind;
   private String smallBlind;
@@ -16,33 +18,42 @@ public class StartOfRoundMsg {
     
   }
   
-  public StartOfRoundMsg(Map<String, BigDecimal> playerToBalances, Map<String, List<String>> playerToCards,
+  public StartOfRoundMsg(Map<String, BigDecimal> playerToBalances, Map<String, List<String>> playersToCards,
       List<String> communityCards, String bigBlind, String smallBlind, String dealer) {
-    this.playerToBalances = playerToBalances;
-    this.playerToCards = playerToCards;
+    this.playersToBalances = playerToBalances;
+    this.playersToCards = playersToCards;
     this.communityCards = communityCards;
     this.bigBlind = bigBlind;
     this.smallBlind = smallBlind;
     this.dealer = dealer;
   }
-  //TODO some gnarly rep exposure in these guys gotta fix
+
   public Map<String, BigDecimal> getPlayerToBalances() {
-    return this.playerToBalances;
+    Map<String, BigDecimal> mapCopy = 
+        this.playersToBalances.entrySet().stream()
+        .collect(Collectors.toMap(e -> e.getKey(), e -> new BigDecimal(e.getValue().toString())));
+    
+    return mapCopy;
   }
   
   public Map<String, List<String>> getPlayerToCards() {
-    return this.playerToCards;
+    Map<String, List<String>> mapCopy = 
+        this.playersToCards.entrySet().stream()
+        .collect(Collectors.toMap(e -> e.getKey(), e -> List.copyOf(e.getValue())));
+        
+    return mapCopy;
   }
   
   public List<String> getCommunityCards() {
-    return this.communityCards;
+    List<String> listCopy = new ArrayList<String>(this.communityCards);
+    return listCopy;
   }
   
   public String getBigBlind() {
     return this.bigBlind;
   }
   
-  public String getSmallBling() {
+  public String getSmallBlind() {
     return this.smallBlind;
   }
   
