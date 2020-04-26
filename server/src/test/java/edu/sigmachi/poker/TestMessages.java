@@ -17,10 +17,10 @@ import edu.sigmachi.poker.ClientActionMsg.Actions;
 public class TestMessages {
 
   /*
-   * Covers creating ClientRoundMsg with empty constructor and setting all fields
+   * Covers creating ClientActionMsg with empty constructor and setting all fields
    */
   @Test
-  public void testClientRoundMsgSetters() {
+  public void testClientActionMsgSetters() {
     ClientActionMsg msg = new ClientActionMsg();
 
     msg.setAction("FOLD");
@@ -47,7 +47,7 @@ public class TestMessages {
    * Covers creating ClientRoundMsg with empty constructor and setting all fields
    */
   @Test
-  public void testClientRoundMsgFullConstructor() {
+  public void testClientActionMsgFullConstructor() {
     ClientActionMsg msg = new ClientActionMsg("cdurr", "RAISE", "1.00");
     assertEquals(new BigDecimal("1.00"), msg.getRaiseAmount());
     assertEquals("cdurr", msg.getPlayerName());
@@ -58,11 +58,14 @@ public class TestMessages {
    * Covers that we only have a raise amount when the action is Raise
    */
   @Test(expected = AssertionError.class)
-  public void testClientRoundMsgFullRaiseError() {
+  public void testClientActionMsgFullRaiseError() {
     ClientActionMsg msg = new ClientActionMsg("cdurr", "RAISE", "");
     msg.getRaiseAmount();
   }
 
+  /*
+   * Covers EndOfRoundMsg 
+   */
   @Test
   public void testEndOfRoundMsg() {
     List<String> p1Cards = new ArrayList<>(Arrays.asList("2C", "3H"));
@@ -109,8 +112,11 @@ public class TestMessages {
     assertEquals(new BigDecimal("84.02"), returnFinalBalances.get("mheatzig"));
   }
   
+  /*
+   * Covers ServerActionResponseMsg
+   */
   @Test
-  public void ServerRoundMsg() {
+  public void testServerRoundMsg() {
     BigDecimal p1Balance = new BigDecimal("1.01");
     BigDecimal p2Balance = new BigDecimal("2.01");
     Map<String, BigDecimal> playerBalances = new HashMap<>();
@@ -168,8 +174,11 @@ public class TestMessages {
     assertEquals(new BigDecimal("500.00"), msg.getSidePotValue());
   }
   
+  /*
+   * Covers StartOfRoundMsg
+   */
   @Test
-  public void StartOfRoundMsg() {
+  public void testStartOfRoundMsg() {
     Map<String, BigDecimal> playerToBalances = new HashMap<>();
     playerToBalances.put("cdurr", new BigDecimal("2.00"));
     playerToBalances.put("mheatzig", new BigDecimal("4.00"));
