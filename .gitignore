@@ -97,3 +97,10 @@ typings/
 
 # dotenv environment variables file
 .env
+
+
+
+react-app-env.d.ts
+.classpath
+.project
+.settings/
