@@ -3,14 +3,37 @@ import CommunityCards from "./CommunityCards.component"
 import MyHand from "./MyHand.component"
 import pokerTableImg from '../static/pokertable.svg';
 import '../css/table.css';
+import io from 'socket.io-client';
 
-class Table extends Component {
+const socket = io.connect("http://localhost:9092"); 
 
+interface TableState {
+
+};
+
+interface TableProps {
+
+};
+
+class Table extends React.Component<TableProps, TableState> {
+  constructor(props: TableProps) {
+    super(props);
+  }
+
+  callButtonCallback() {
+
+  }
+
+  componentDidMount() {
+    socket.on('actionResponse', (data: any): any => {
+
+    });
+  }
   render(): JSX.Element {
     return (
       <div className="ctn-table">
         <img className="" alt="" src={pokerTableImg}/>
-        <button className="call-button mod-unselectable">Call</button>
+        <button onClick={() => this.callButtonCallback()} className="call-button mod-unselectable">Call</button>
         <button className="check-button mod-unselectable">Check</button>
         <button className="fold-button mod-unselectable">Fold</button>
         <button disabled={true} className="raise-button mod-unselectable">Raise</button>
