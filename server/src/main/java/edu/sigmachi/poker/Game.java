@@ -15,14 +15,14 @@ public class Game {
   private Map<String, BigDecimal> playersToBalances;
   //TODO replace this with the cards
   private Map<String, String> playersToCards;
-  private final Queue<LoginAttemptMsg> loginMsgQueue;
+  private final Queue<DisconnectConnectMsg> connectionMsgQueue;
   private final Queue<ClientActionMsg> clientMsgQueue;
   private final Queue<ConsoleMsg> consoleMsgQueue;
   
   
-  public Game(SocketIOServer server, String gamePassword, Queue<LoginAttemptMsg> loginMsgQueue, 
+  public Game(SocketIOServer server, String gamePassword,Queue<DisconnectConnectMsg> connectionMsgQueue, 
       Queue<ClientActionMsg> clientMsgQueue, Queue<ConsoleMsg> consoleMsgQueue) {
-    this.loginMsgQueue = loginMsgQueue;
+    this.connectionMsgQueue = connectionMsgQueue;
     this.clientMsgQueue = clientMsgQueue;
     this.gamePassword = gamePassword;
     this.consoleMsgQueue = consoleMsgQueue;

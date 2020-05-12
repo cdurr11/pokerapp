@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Scanner;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.corundumstudio.socketio.AckRequest;
@@ -31,7 +32,7 @@ public class Server {
   private final SocketIOServer server;
   private final String gamePassword;
   private final Map<String, String> playerToSessionId = new HashMap<String, String>();
-  private final Queue<LoginAttemptMsg> loginMsgQueue = new ConcurrentLinkedQueue<>(); 
+  private final Queue<DisconnectConnectMsg> connectionMsgQueue = new ConcurrentLinkedQueue<>(); 
   private final Queue<ClientActionMsg> clientMsgQueue = new ConcurrentLinkedQueue<>();
   private final Queue<ConsoleMsg> consoleMsgQueue = new ConcurrentLinkedQueue<>();
   
@@ -68,28 +69,19 @@ public class Server {
   
   private void handlePlayerDisconnection(SocketIOClient socketIOClient) {
     System.out.println(socketIOClient.getSessionId() + " had just disconnected!");
+    connectionMsgQueue.add(new DisconnectionMsg(socketIOClient.getSessionId()));
   }
   
-  private LoginAttemptResponseMsg handlePlayerAuthenticationAttempt(LoginAttemptMsg loginMsg) {
-    System.out.print(loginMsg.getPlayerName());
-    System.out.print(loginMsg.getProvidedPassword());
+  private LoginAttemptResponseMsg handlePlayerAuthenticationAttempt(LoginAttemptMsg loginMsg, 
+      UUID sessionID) {
     if (loginMsg.getProvidedPassword().equals(gamePassword)) {
-      loginMsgQueue.add(loginMsg);
+      connectionMsgQueue.add(new ConnectionMsg(sessionID, loginMsg.getPlayerName()));
       return new LoginAttemptResponseMsg(true, "Login Successful, you will enter the game at "
           + "the start of the next round");
     }
     else {
-      System.out.println("3");
       return new LoginAttemptResponseMsg(false, "Incorrect Password");
     }    
-  }
-  
-  private void emitEndOfRoundMessage() {
-//    server.getBroadcastOperations().sendEvent("endOfRound", generateDummyServerRoundMsg());
-  }
-  
-  private void emitStartOfRoundMessage() {
-//   server.getBroadcastOperations().sendEvent("startOfRound", generateDummyServerRoundMsg());
   }
   
   private void initializeGame() {
@@ -97,7 +89,7 @@ public class Server {
       @Override
       public void run() {
         try {
-          Game game = new Game(server, gamePassword, loginMsgQueue, clientMsgQueue, consoleMsgQueue);
+          Game game = new Game(server, gamePassword, connectionMsgQueue, clientMsgQueue, consoleMsgQueue);
           game.start();
         } catch(Exception e) {
           e.printStackTrace();
@@ -203,7 +195,8 @@ public class Server {
     server.addEventListener("loginAttempt", LoginAttemptMsg.class, new DataListener<LoginAttemptMsg>() {
       @Override
       public void onData(SocketIOClient client, LoginAttemptMsg loginMsg, AckRequest ackRequest) {
-        LoginAttemptResponseMsg response = handlePlayerAuthenticationAttempt(loginMsg);
+        LoginAttemptResponseMsg response = handlePlayerAuthenticationAttempt(loginMsg, 
+            client.getSessionId());
         client.sendEvent("loginResponse", response);
       }
     });
