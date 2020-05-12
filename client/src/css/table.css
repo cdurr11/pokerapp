@@ -9,7 +9,6 @@
   padding-top: 10px;
   padding-bottom: 10px;
   font-size: 25px;
-
 }
 
 .check-button {
@@ -109,4 +108,38 @@
   position: absolute;
   left:450px;
   bottom: 50px;
+}
+
+.elm-user-form {
+  position: absolute;
+  margin-top: 10px;
+  margin-left: 10px;
+  min-width: 150px;
+  max-width: 150px;
+  min-height: 25px;
+  max-height: 25px;
+  font-size: 25px;
+}
+
+.elm-group-password-form {
+  position: absolute;
+  margin-top: 10px;
+  left: 170px;
+  margin-left: 10px;
+  min-width: 150px;
+  max-width: 150px;
+  min-height: 25px;
+  max-height: 25px;
+  font-size: 25px;
+}
+
+.elm-login-button {
+  min-width: 100px;
+  max-width: 100px;
+  min-height: 150px;
+  max-height: 150px;
+  position: absolute;
+  left:350px;
+  margin-top: 9px;
+  font-size: 25px;
 }
