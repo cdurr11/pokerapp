@@ -22,6 +22,7 @@ interface TableProps {
   raiseButtonCallback(raiseAmount: string): void;
   handleLogin(username: string, groupPassword: string): void;
   spectating: boolean;
+  loggedIn: boolean;
 };
 
 class Table extends React.Component<TableProps, TableState> {
@@ -61,7 +62,7 @@ class Table extends React.Component<TableProps, TableState> {
   render(): JSX.Element {
     return (
       <div className="ctn-table">
-        {this.props.spectating && 
+        {!this.props.loggedIn && 
           <div>
             <input placeholder="Username" 
               onChange={(e) => this.handleKeypress(e, FormName.USERNAME)}

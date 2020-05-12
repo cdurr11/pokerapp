@@ -20,6 +20,8 @@ import com.corundumstudio.socketio.listener.DisconnectListener;
 
 import edu.sigmachi.poker.ConsoleMessages.AddPlayerMoneyMsg;
 import edu.sigmachi.poker.ConsoleMessages.ConsoleMsg;
+import edu.sigmachi.poker.ConsoleMessages.EndMsg;
+import edu.sigmachi.poker.ConsoleMessages.PrintGameStateMsg;
 import edu.sigmachi.poker.ConsoleMessages.RestartMsg;
 import edu.sigmachi.poker.ConsoleMessages.StartMsg;
 import edu.sigmachi.poker.ConsoleMessages.SubtractPlayerMoneyMsg;
@@ -27,7 +29,7 @@ import edu.sigmachi.poker.ConsoleMessages.SubtractPlayerMoneyMsg;
 public class Server {
   
   private final SocketIOServer server;
-  private final Game game;
+  private final String gamePassword;
   private final Map<String, String> playerToSessionId = new HashMap<String, String>();
   private final Queue<LoginAttemptMsg> loginMsgQueue = new ConcurrentLinkedQueue<>(); 
   private final Queue<ClientActionMsg> clientMsgQueue = new ConcurrentLinkedQueue<>();
@@ -45,14 +47,14 @@ public class Server {
     config.setHostname("localhost");
     config.setPort(9092);
     
-    server = new SocketIOServer(config);
-    
+    this.gamePassword = gamePassword;
+    this.server = new SocketIOServer(config);
+
+    initializeGame();
     initializeServerConsole(consoleMsgQueue);
     initializeListeners();
     
-    this.game = new Game(server, gamePassword, loginMsgQueue, clientMsgQueue);
-    
-    server.start();
+    this.server.start();
     System.out.println("Server Started!");
   }
   
@@ -68,15 +70,18 @@ public class Server {
     System.out.println(socketIOClient.getSessionId() + " had just disconnected!");
   }
   
-  private void handlePlayerAuthenticationAttempt(LoginAttemptMsg loginMsg) {
-    if (this.game.authenticatePlayer(loginMsg.getPlayerName(), loginMsg.getProvidedPassword())) {
-      // Pass messages to the game class here.
-      //TODO send login success msg
+  private LoginAttemptResponseMsg handlePlayerAuthenticationAttempt(LoginAttemptMsg loginMsg) {
+    System.out.print(loginMsg.getPlayerName());
+    System.out.print(loginMsg.getProvidedPassword());
+    if (loginMsg.getProvidedPassword().equals(gamePassword)) {
+      loginMsgQueue.add(loginMsg);
+      return new LoginAttemptResponseMsg(true, "Login Successful, you will enter the game at "
+          + "the start of the next round");
     }
     else {
-      // send authentication failed msg
-    }
-    
+      System.out.println("3");
+      return new LoginAttemptResponseMsg(false, "Incorrect Password");
+    }    
   }
   
   private void emitEndOfRoundMessage() {
@@ -85,6 +90,21 @@ public class Server {
   
   private void emitStartOfRoundMessage() {
 //   server.getBroadcastOperations().sendEvent("startOfRound", generateDummyServerRoundMsg());
+  }
+  
+  private void initializeGame() {
+    Thread gameThread = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Game game = new Game(server, gamePassword, loginMsgQueue, clientMsgQueue, consoleMsgQueue);
+          game.start();
+        } catch(Exception e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    gameThread.start();
   }
   
   private void initializeServerConsole(Queue<ConsoleMsg> consoleMsgQueue) {
@@ -154,8 +174,13 @@ public class Server {
           }
         }
         else {return false;}
-        break;  
-        
+        break;
+      case "END":
+        msg = new EndMsg();
+        break;
+      case "GAME_STATE":
+        msg = new PrintGameStateMsg();
+        break;
       default:
         return false;
     }
@@ -178,7 +203,8 @@ public class Server {
     server.addEventListener("loginAttempt", LoginAttemptMsg.class, new DataListener<LoginAttemptMsg>() {
       @Override
       public void onData(SocketIOClient client, LoginAttemptMsg loginMsg, AckRequest ackRequest) {
-        handlePlayerAuthenticationAttempt(loginMsg);
+        LoginAttemptResponseMsg response = handlePlayerAuthenticationAttempt(loginMsg);
+        client.sendEvent("loginResponse", response);
       }
     });
     
@@ -195,7 +221,6 @@ public class Server {
       }
     });
   }
-  
   
   //Just an example of how you should make these messages, obviously a lot cleaner tho
   private static ServerActionResponseMsg generateDummyServerRoundMsg() {

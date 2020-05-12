@@ -12,6 +12,7 @@ interface AppState {
   cards: [string] | undefined;
   currentBet: string | undefined;
   spectating: boolean,
+  loggedIn: boolean,
 }
 
 interface ClientMsgType {
@@ -21,8 +22,8 @@ interface ClientMsgType {
 }
 
 interface LoginMsgType {
-  username: string,
-  groupPassword: string,
+  playerName: string,
+  providedPassword: string,
 }
 
 class App extends React.Component<{},AppState> {
@@ -33,6 +34,7 @@ class App extends React.Component<{},AppState> {
       cards: undefined,
       currentBet: undefined,
       spectating: true,
+      loggedIn: false,
     }
 
     this.nonRaiseButtonCallback = this.nonRaiseButtonCallback.bind(this);
@@ -43,6 +45,13 @@ class App extends React.Component<{},AppState> {
   componentDidMount() {
     socket.on('actionResponse', (data: any): any => {
       console.log(data);
+    });
+
+    socket.on('loginResponse', (data: any): any => {
+      console.log(data);
+      if (data.success) {
+        this.setState({loggedIn: true});
+      }
     });
   }
 
@@ -69,11 +78,10 @@ class App extends React.Component<{},AppState> {
   handleLogin(username: string, groupPassword: string): void {
 
     const clientMsg: LoginMsgType = {
-      username: username,
-      groupPassword: groupPassword
+      playerName: username,
+      providedPassword: groupPassword
     };
-
-    socket.emit("login", clientMsg);
+    socket.emit("loginAttempt", clientMsg);
   }
 
   render(): JSX.Element {
@@ -86,6 +94,7 @@ class App extends React.Component<{},AppState> {
             raiseButtonCallback={this.raiseButtonCallback}
             handleLogin={this.handleLogin}
             spectating={this.state.spectating}
+            loggedIn={this.state.loggedIn}
           />
           <div className="bottom-border-elem"/>
         </div>

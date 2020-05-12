@@ -29,18 +29,18 @@ public class Game {
   }
   
   public void start() {
-    while (true) {
+//    while (true) {
       //check and handle login requests here
-      table.addPlayer();
-      table.removePlayer();
-      //handle consoleMessages here
-        // Modify table however console messages say
-      
-      
-      //perform a round
-      table.doRound(server, clientMsgQueue)
+//      table.addPlayer();
+//      table.removePlayer();
+//      //handle consoleMessages here
+//        // Modify table however console messages say
+//      
+//      
+//      //perform a round
+//      table.doRound(server, clientMsgQueue)
       //send message to the front-end
-    }
+//    }
   }
   
   /**
