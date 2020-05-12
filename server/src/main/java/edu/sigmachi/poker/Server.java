@@ -4,8 +4,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Scanner;
 import java.util.UUID;
@@ -50,7 +52,6 @@ public class Server {
     
     this.gamePassword = gamePassword;
     this.server = new SocketIOServer(config);
-
     initializeGame();
     initializeServerConsole(consoleMsgQueue);
     initializeListeners();
@@ -106,16 +107,20 @@ public class Server {
         while(true) {
           try {
             Scanner scanner = new Scanner(System.in);
-            String reply = scanner.nextLine();
-            if (handleREPLLine(reply, consoleMsgQueue)) {
-              System.out.println("REPLY: Request has been successfully logged");
-            }
-            else {
-              System.out.println("REPLY: Invalid Request");
-            }
-          } catch(Exception e) {
+            String input = scanner.nextLine();
+            ConsoleMsg consoleResponse = REPL.parseConsoleMsg(input);
+            consoleMsgQueue.add(consoleResponse);
+            System.out.println("REPLY: Request has been successfully logged");
+          } catch(IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+          } catch(NoSuchElementException e) {
+            //Exception from the scanner
+            e.printStackTrace();
+          } catch(IllegalStateException e) {
+            //Exception from the scanner
             e.printStackTrace();
           }
+          
         }
       }
     });
@@ -126,59 +131,6 @@ public class Server {
    * Return true if message is successful and has been placed on the queue to be
    * processed, false otherwise
    */
-  private boolean handleREPLLine(String input, Queue<ConsoleMsg> consoleMsgQueue) {
-    input = input.toUpperCase();
-    String[] splitInput = input.split(" ");
-    final int modifyMoneyInputLength = 3;
-    
-    ConsoleMsg msg;
-    switch (splitInput[0]) {
-      case "START":
-        msg = new StartMsg();
-        break;
-      case "RESTART":
-        msg = new RestartMsg();
-        break;
-        
-      //TODO clean this up this is ugly
-      case "ADD_MONEY":
-        if (splitInput.length == modifyMoneyInputLength) {
-          try {
-            BigDecimal addedMoney = new BigDecimal(splitInput[2]);
-            addedMoney.setScale(2);
-            msg = new AddPlayerMoneyMsg(splitInput[2], addedMoney);
-          }
-          catch(Exception NumberFormatException) {
-            return false;
-          }
-        }
-        else {return false;}
-        break;
-      case "SUBTRACT_MONEY":
-        if (splitInput.length == modifyMoneyInputLength) {
-          try {
-            BigDecimal addedMoney = new BigDecimal(splitInput[2]);
-            addedMoney.setScale(2);
-            msg = new SubtractPlayerMoneyMsg(splitInput[2], addedMoney);
-          }
-          catch(Exception NumberFormatException) {
-            return false;
-          }
-        }
-        else {return false;}
-        break;
-      case "END":
-        msg = new EndMsg();
-        break;
-      case "GAME_STATE":
-        msg = new PrintGameStateMsg();
-        break;
-      default:
-        return false;
-    }
-    consoleMsgQueue.add(msg);
-    return true;
-  }
   
   private void initializeListeners() {
     //This callback is triggered when we fire the websocket on the client side
@@ -214,6 +166,22 @@ public class Server {
       }
     });
   }
+  
+  public void close() {
+    server.stop();
+  }
+  public synchronized Queue<ConsoleMsg> getConsoleMsgQueue() {
+    return new LinkedList<>(consoleMsgQueue);
+  }
+  
+  public synchronized Queue<DisconnectConnectMsg> getConnectionMsgQueue() {
+    return new LinkedList<>(connectionMsgQueue);
+  }
+  
+  public synchronized Queue<ClientActionMsg> getClientMsgQueue() {
+    return new LinkedList<>(clientMsgQueue);
+  }
+  
   
   //Just an example of how you should make these messages, obviously a lot cleaner tho
   private static ServerActionResponseMsg generateDummyServerRoundMsg() {

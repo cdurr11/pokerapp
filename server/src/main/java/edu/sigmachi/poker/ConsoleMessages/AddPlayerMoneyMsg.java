@@ -19,7 +19,7 @@ public class AddPlayerMoneyMsg implements ConsoleMsg {
     return this.dollarAmount;
   }
   
-  public String getPlayerName () {
+  public String getPlayerName() {
     return this.playerName;
   }  
 }

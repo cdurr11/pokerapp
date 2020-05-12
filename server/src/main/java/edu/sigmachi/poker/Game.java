@@ -42,22 +42,4 @@ public class Game {
       //send message to the front-end
 //    }
   }
-  
-  /**
-   * Authenticate and add the player to the game
-   * @return true if the player is successfully authenticated and added to the game, false otherwise
-   */
-  public boolean authenticatePlayer(String playerName, String providedPassword) {
-    if (providedPassword.equals(gamePassword)) {
-      if (allPlayersEver.contains(playerName)) {
-        //put the player in where they left off
-      }
-      else {
-        //add new player and stuff
-      }
-      return true;
-    }
-    
-    return false;
-  }
 }
