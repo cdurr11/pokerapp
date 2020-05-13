@@ -75,10 +75,10 @@ class App extends React.Component<{},AppState> {
     socket.emit("playerAction", clientMsg);
   }
 
-  handleLogin(username: string, groupPassword: string): void {
+  handleLogin(playerName: string, groupPassword: string): void {
 
     const clientMsg: LoginMsgType = {
-      playerName: username,
+      playerName: playerName,
       providedPassword: groupPassword
     };
     socket.emit("loginAttempt", clientMsg);

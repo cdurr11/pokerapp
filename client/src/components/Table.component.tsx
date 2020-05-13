@@ -6,7 +6,7 @@ import '../css/table.css';
 
 
 interface TableState {
-  usernameValue: string;
+  playerNameValue: string;
   passwordValue: string;
   raiseValue: string;
 };
@@ -20,7 +20,7 @@ enum FormName {
 interface TableProps {
   nonRaiseButtonCallback(selectedAction: string): void;
   raiseButtonCallback(raiseAmount: string): void;
-  handleLogin(username: string, groupPassword: string): void;
+  handleLogin(playerName: string, groupPassword: string): void;
   spectating: boolean;
   loggedIn: boolean;
 };
@@ -29,7 +29,7 @@ class Table extends React.Component<TableProps, TableState> {
   constructor(props: TableProps) {
     super(props);
     this.state = {
-      usernameValue: "",
+      playerNameValue: "",
       passwordValue: "",
       raiseValue: "",
     }
@@ -39,7 +39,7 @@ class Table extends React.Component<TableProps, TableState> {
     if (event.target.value != null) {
       switch (formName) {
         case FormName.USERNAME: {
-          this.setState({"usernameValue": event.target.value});
+          this.setState({"playerNameValue": event.target.value});
           break;
         }
         case FormName.PASSWORD: {
@@ -71,7 +71,7 @@ class Table extends React.Component<TableProps, TableState> {
               onChange={(e) => this.handleKeypress(e, FormName.PASSWORD)}
               className={"elm-group-password-form"}></input>
             <button 
-              onClick={() => this.props.handleLogin(this.state.usernameValue, 
+              onClick={() => this.props.handleLogin(this.state.playerNameValue, 
                 this.state.passwordValue)}
               className={"elm-login-button mod-unselectable"}>
                 Login
