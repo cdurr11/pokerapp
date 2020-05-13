@@ -23,6 +23,8 @@ interface TableProps {
   handleLogin(playerName: string, groupPassword: string): void;
   spectating: boolean;
   loggedIn: boolean;
+  myCards: string[];
+  communityCards: string[];
 };
 
 class Table extends React.Component<TableProps, TableState> {
@@ -99,8 +101,8 @@ class Table extends React.Component<TableProps, TableState> {
         </input>
         <p className="player-balance mod-unselectable">$100</p>
         <p className="pot mod-unselectable">$20.00</p>
-        <MyHand/>
-        <CommunityCards/>
+        <MyHand myCards={this.props.myCards}/>
+        <CommunityCards communityCards={this.props.communityCards}/>
       </div>
     );
   }

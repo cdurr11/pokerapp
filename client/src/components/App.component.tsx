@@ -3,13 +3,15 @@ import '../css/app.css';
 import OpponentSidePanel from './OpponentSidePanel.component';
 import Table from "./Table.component"
 import io from 'socket.io-client';
-import { string } from 'prop-types';
 
 const socket = io.connect("http://localhost:9092"); 
 
 interface AppState {
   playerName: string;
-  cards: [string] | undefined;
+  communityCards: string[];
+  myCards: string[];
+  playerOrder: string[];
+  playerCards: {};
   currentBet: string | undefined;
   spectating: boolean,
   loggedIn: boolean,
@@ -30,8 +32,11 @@ class App extends React.Component<{},AppState> {
   constructor(props: any) {
     super(props);
     this.state = {
+      playerOrder: [],
+      playerCards: {},
       playerName: "anonymousPlayer",
-      cards: undefined,
+      myCards: ["",""],
+      communityCards: [],
       currentBet: undefined,
       spectating: true,
       loggedIn: false,
@@ -40,7 +45,6 @@ class App extends React.Component<{},AppState> {
     this.nonRaiseButtonCallback = this.nonRaiseButtonCallback.bind(this);
     this.raiseButtonCallback = this.raiseButtonCallback.bind(this);
   }
-  
 
   componentDidMount() {
     socket.on('actionResponse', (data: any): any => {
@@ -87,7 +91,12 @@ class App extends React.Component<{},AppState> {
   render(): JSX.Element {
     return (
       <div className="ctn-app">
-        <OpponentSidePanel/>
+        <OpponentSidePanel 
+          playerOrder={this.state.playerOrder}
+          playerCards={this.state.playerCards}
+          spectating={this.state.spectating}
+          playerName={this.state.playerName}
+        />
         <div className="ctn-middle">
           <Table 
             nonRaiseButtonCallback={this.nonRaiseButtonCallback}
@@ -95,6 +104,8 @@ class App extends React.Component<{},AppState> {
             handleLogin={this.handleLogin}
             spectating={this.state.spectating}
             loggedIn={this.state.loggedIn}
+            communityCards={this.state.communityCards}
+            myCards={this.state.myCards}
           />
           <div className="bottom-border-elem"/>
         </div>

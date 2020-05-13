@@ -91,8 +91,8 @@
 }
 
 .ctn-ctr-cards {
-  min-width: 540px;
-  max-width: 210px;
+  min-width: 550px;
+  max-width: 220px;
   min-height: 100px;
   max-height: 100px;
   position: absolute;
@@ -101,8 +101,8 @@
 }
 
 .ctn-my-hand {
-  min-width: 210px;
-  max-width: 210px;
+  min-width: 220px;
+  max-width: 220px;
   min-height: 100px;
   max-height: 100px;
   position: absolute;

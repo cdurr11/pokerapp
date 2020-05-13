@@ -1,6 +1,11 @@
 import React, {Component} from 'react';
 import card from '../static/10CS.svg';
 
+interface OpponentTileProps {
+  cards: string[];
+  name: string;
+}
+
 class OpponentTile extends Component {
 
   render(): JSX.Element {
