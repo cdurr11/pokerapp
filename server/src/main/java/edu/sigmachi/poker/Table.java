@@ -153,12 +153,10 @@ public class Table {
 		
 		//This will post the blinds for the correct players
 		postBlinds();
-		int count = 0;
-		int river = 4;
+		int river = 5;
 		while (activePlayers.size() > 1) {
 			roundOfBetting();
-			count+=1;
-			if (count == river) {
+			if (actionCards.getCurrentCommunityCards().size() == river) {
 				showDown();
 			}
 		showDown();
@@ -325,11 +323,6 @@ public class Table {
 			toAct--;
 			
 		}
-		
-		
-		
-		
-		
 		
 		
 	}
