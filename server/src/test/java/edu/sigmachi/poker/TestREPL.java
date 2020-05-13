@@ -8,12 +8,12 @@ import java.math.BigDecimal;
 
 import org.junit.Test;
 
-import edu.sigmachi.poker.ConsoleMessages.AddPlayerMoneyMsg;
-import edu.sigmachi.poker.ConsoleMessages.ConsoleMsg;
-import edu.sigmachi.poker.ConsoleMessages.EndMsg;
-import edu.sigmachi.poker.ConsoleMessages.PrintGameStateMsg;
-import edu.sigmachi.poker.ConsoleMessages.RestartMsg;
-import edu.sigmachi.poker.ConsoleMessages.StartMsg;
+import edu.sigmachi.poker.Messages.AddPlayerMoneyMsg;
+import edu.sigmachi.poker.Messages.ConsoleMsg;
+import edu.sigmachi.poker.Messages.EndMsg;
+import edu.sigmachi.poker.Messages.PrintGameStateMsg;
+import edu.sigmachi.poker.Messages.RestartMsg;
+import edu.sigmachi.poker.Messages.StartMsg;
 
 public class TestREPL {
 
@@ -26,6 +26,9 @@ public class TestREPL {
     assertTrue(REPL.parseConsoleMsg("START") instanceof StartMsg);
     assertTrue(REPL.parseConsoleMsg("start") instanceof StartMsg);
     assertTrue(REPL.parseConsoleMsg("STaRt") instanceof StartMsg);
+    assertThrows(IllegalArgumentException.class, () -> {
+      REPL.parseConsoleMsg("START cdurr");
+    });
   }
 
   /*
@@ -37,6 +40,9 @@ public class TestREPL {
     assertTrue(REPL.parseConsoleMsg("RESTART") instanceof RestartMsg);
     assertTrue(REPL.parseConsoleMsg("restart") instanceof RestartMsg);
     assertTrue(REPL.parseConsoleMsg("rEsTarT") instanceof RestartMsg);
+    assertThrows(IllegalArgumentException.class, () -> {
+      REPL.parseConsoleMsg("RESTART cdurr");
+    });
   }
   
   /*
@@ -48,6 +54,9 @@ public class TestREPL {
     assertTrue(REPL.parseConsoleMsg("END") instanceof EndMsg);
     assertTrue(REPL.parseConsoleMsg("end") instanceof EndMsg);
     assertTrue(REPL.parseConsoleMsg("EnD") instanceof EndMsg);
+    assertThrows(IllegalArgumentException.class, () -> {
+      REPL.parseConsoleMsg("END cdurr");
+    });
   }
   
   /*
@@ -59,6 +68,9 @@ public class TestREPL {
     assertTrue(REPL.parseConsoleMsg("GAME_STATE") instanceof PrintGameStateMsg);
     assertTrue(REPL.parseConsoleMsg("game_state") instanceof PrintGameStateMsg);
     assertTrue(REPL.parseConsoleMsg("gAmE_STaTe") instanceof PrintGameStateMsg);
+    assertThrows(IllegalArgumentException.class, () -> {
+      REPL.parseConsoleMsg("GAME_STATE cdurr");
+    });
   }
   
   /*

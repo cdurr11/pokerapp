@@ -4,16 +4,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
+import edu.sigmachi.poker.Messages.ClientActionMsg;
+import edu.sigmachi.poker.Messages.EndOfRoundMsg;
+import edu.sigmachi.poker.Messages.ServerActionResponseMsg;
+import edu.sigmachi.poker.Messages.StartOfRoundMsg;
+import edu.sigmachi.poker.Messages.ClientActionMsg.Actions;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-
-
-import edu.sigmachi.poker.ClientActionMsg.Actions;
 
 public class TestMessages {
 

@@ -18,17 +18,28 @@ public class REPL {
     
     switch (splitInput[0].toUpperCase()) {
       case "START":
-        return new StartMsg();
+        if (splitInput.length == 1) {
+          return new StartMsg();
+        }
+        throw new IllegalArgumentException("Invalid Number of Elements");
       case "RESTART":
-        return new RestartMsg();
+        if (splitInput.length == 1) {
+          return new RestartMsg();
+        }
+        throw new IllegalArgumentException("Invalid Number of Elements");
       case "ADD_MONEY":
         return handleChangeMoney(splitInput, false);
       case "SUBTRACT_MONEY":
         return handleChangeMoney(splitInput, true);
       case "END":
-        return new EndMsg();
+        if (splitInput.length == 1) {
+          return new EndMsg();
+        }
+        throw new IllegalArgumentException("Invalid Number of Elements");
       case "GAME_STATE":
-        return new PrintGameStateMsg();
+        if (splitInput.length == 1) {
+          return new PrintGameStateMsg();
+        }
       default:
         throw new IllegalArgumentException("Command Does Not Exist");
     }

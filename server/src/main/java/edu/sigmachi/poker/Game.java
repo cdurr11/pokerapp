@@ -9,9 +9,9 @@ import java.util.concurrent.BlockingQueue;
 import com.corundumstudio.socketio.SocketIOServer;
 
 import edu.sigmachi.poker.Messages.AfterRoundMsg;
-import edu.sigmachi.poker.Messages.ConsoleMsg;
 import edu.sigmachi.poker.Messages.DisconnectConnectMsg;
 import edu.sigmachi.poker.Messages.InstantGameMsg;
+import edu.sigmachi.poker.Messages.StartMsg;
 
 public class Game {
   private final String gamePassword;
@@ -32,7 +32,11 @@ public class Game {
     this.afterRoundMsgQueue = afterRoundMsgQueue;
   }
   
-  public void start() {
+  public void start() throws InterruptedException {
+    while (!(this.instantGameMsgQueue.take() instanceof StartMsg)) {
+      System.out.println("You Must Start The Game First!");
+    }
+    System.out.println("STARTING GAME");
 //    while (true) {
       //check and handle login requests here
 //      table.addPlayer();
