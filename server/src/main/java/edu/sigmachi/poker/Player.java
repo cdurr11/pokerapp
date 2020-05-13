@@ -1,10 +1,13 @@
 package edu.sigmachi.poker;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 public class Player {
 
     private String id;
     
-    private float stackSize;
+    private BigDecimal stackSize;
 
     private Card left;
     private Card right;
@@ -29,18 +32,18 @@ public class Player {
      * @param Right Card Object
      * @param val passed in value of the card value
      */
-    public Player(String id, float stackSize, boolean inPlay){
+    public Player(String id, BigDecimal stackSize, boolean inPlay){
     	this.id = id;
         this.stackSize = stackSize;
         this.inPlay = inPlay;
-        this.deck = new Deck();
+//        this.deck = new Deck();
 
     }
     
     
     
     private void checkRep() {
-        assert this.stackSize >= 0;
+        assert (this.stackSize.compareTo(BigDecimal.ZERO) > 0);
     }
 
 	public void drawHand() {
@@ -70,12 +73,19 @@ public class Player {
         return this.inPlay;
     }
     
+    /**
+     * Adjust the size of someone's stack after a call
+     * @return 
+     */
+    public void adjustStackSize(BigDecimal callSize) {
+    	this.stackSize = stackSize.subtract(callSize);
+    }
     
     
     /**
      * @return the value 
      */
-    public float getChipCount() {
+    public BigDecimal getChipCount() {
         return this.stackSize;
     }
     
@@ -87,8 +97,7 @@ public class Player {
         return id;
     }
 
-    
-    
+
     
 }
 

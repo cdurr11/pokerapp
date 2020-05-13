@@ -2,8 +2,13 @@ package edu.sigmachi.poker;
 
 
 import java.math.BigDecimal;
+
 import java.util.*;
-import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+
+import edu.sigmachi.poker.Messages.*;
+import edu.sigmachi.poker.Messages.ClientActionMsg.Actions;
 
 
 /**
@@ -50,7 +55,25 @@ public class Table {
     /** This will keep track of the dealer's position*/
     private Integer dealerPosition;
     
+    /** Message queue */
+    private BlockingQueue<ClientActionMsg> messageQueue;
     
+    /** Server queue */
+    private ServerActionResponseMsg serverMessage;
+    
+    /** A single message from the client */
+    private ClientActionMsg playerMessage;
+
+    /**
+     * Current player
+     */
+    private Player currentPlayer;
+    
+    
+    /**
+     * Get available actions for a player
+     */
+    private ArrayList<String> availableActions;
 
 	/**
 	 * Pass in little/big blinds
@@ -65,8 +88,8 @@ public class Table {
 	    this.table = new HashMap<String, Player>();
 	    this.potSize = new BigDecimal(0);
 	    this.actionCards = new ActionCards();
-	    this.dealer = new Player(null, 0, false);
-
+	    this.dealer = new Player(null, BigDecimal.ZERO, false);
+	    this.messageQueue =  new LinkedBlockingDeque<>();
 	}
 	    
 
@@ -116,6 +139,7 @@ public class Table {
 				* Contains active players
 				* draws 1 card and displays on the screen
 				* Round of betting occurs again. Starts with the player left of the dealer
+	 * @throws InterruptedException 
 	 	* 
 	 	* 
 	 * 
@@ -124,7 +148,7 @@ public class Table {
 	 * 
 	 */
 	
-	private void playHand() {
+	private void playHand() throws InterruptedException {
 		freshHand();
 		
 		//This will post the blinds for the correct players
@@ -205,15 +229,22 @@ public class Table {
 		// TODO Auto-generated method stub
 		
 	}
+	/**
+	 * This is going to just reset the board and get ready for the next hand
+	 */
+	private void resetBoard() {
+		// TODO Auto-generated method stub
+	}
 
 	/**
 	 * This is going to encompass a round of betting
 	 * 	- Take into account current bet, available actions
 	 * 	-
+	 * @throws InterruptedException 
 	 */
-	private void roundOfBetting() {
+	private void roundOfBetting() throws InterruptedException {
 		int toAct = activePlayers.size();
-		int currentBet = 0;
+		BigDecimal currentBet = BigDecimal.ZERO;
 		if (toAct == 0) {
 			return;
 		}
@@ -234,8 +265,47 @@ public class Table {
 //	    this.potSize = new BigDecimal(0);
 
 		
-		while (toAct > 0){
-			ClientActionMsg playerMessage = blockingQueue.take();
+		while (toAct > 0) {
+			// whose turn is it, then we would need to get avaialble acitons
+			ServerActionResponseMsg serverMessage =  getMessage();
+			
+			currentPlayer = getPlayer(serverMessage.getCurrentTurn());
+			availableActions = getAvailableAction(currentPlayer, currentBet);
+			
+			
+			//here we finally send the current table situation along with the players actions to the player... then the player responds accordingly
+			
+			
+			// after message is sent back to the user and then they respond
+			playerMessage = messageQueue.take();
+			if (playerMessage.getAction() == Actions.FOLD) {
+				activePlayers.remove(activePlayers.indexOf(currentPlayer));
+			}
+			
+			else if (playerMessage.getAction() == Actions.CHECK) {
+				continue;
+				
+			}
+			
+			else if (playerMessage.getAction() == Actions.CALL) {
+				currentPlayer.adjustStackSize(currentBet);
+				
+				//need to keep in mind if its main pot or side pot etc
+				potSize.add(currentBet);
+				
+			}
+			else if (playerMessage.getAction() == Actions.RAISE) {
+				toAct = activePlayers.size();
+				currentBet = currentBet.add(playerMessage.getRaiseAmount());
+				currentPlayer.adjustStackSize(currentBet);
+				
+				//need to keep in mind if its main pot or side pot etc
+				potSize.add(currentBet);
+
+			}
+			
+			
+			toAct--;
 			
 		}
 		
@@ -246,6 +316,41 @@ public class Table {
 		
 		
 	}
+	/**
+	 * This will get the available action for a player
+	 * @return
+	 */
+	private ArrayList<String> getAvailableAction(Player player, BigDecimal currentBet) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
+	/**
+	 * 
+	 * @param currentTurn which is a string then will go through players, match the string and return the player object
+	 * @return player object
+	 */
+	private Player getPlayer(String currentTurn) {
+		Player playerMatch = null;
+		for(Player i: players) {
+			if(i.getName().equals(currentTurn)){
+				playerMatch = i;
+				break;
+			}
+		}
+		return playerMatch;
+	}
+
+
+	/**
+	 * This is just here temp
+	 * @return null
+	 */
+	private ServerActionResponseMsg getMessage() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 
 	private void postBlinds() {
@@ -253,24 +358,6 @@ public class Table {
 		
 	}
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
 	
 }
