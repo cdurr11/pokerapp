@@ -33,7 +33,7 @@ public class Table {
     private ActionCards actionCards;
     
     /** This will keep track of the current pot size. */
-    private final BigDecimal potSize;
+    private BigDecimal potSize;
     
     
     /** This will keep track of the total players in the game.*/
@@ -43,7 +43,7 @@ public class Table {
     private final ArrayList<Player> activePlayers;
     
     /** This is the little blind */
-    private final BigDecimal littleBlind;
+    private final BigDecimal smallBlind;
     
     
     /** This is the big blind */
@@ -73,17 +73,17 @@ public class Table {
     /**
      * Get available actions for a player
      */
-    private ArrayList<String> availableActions;
+    private ArrayList<Actions> availableActions;
 
 	/**
 	 * Pass in little/big blinds
 	 */
-	public Table(BigDecimal littleBlind, BigDecimal bigBlind) {
+	public Table(BigDecimal smallBlind, BigDecimal bigBlind) {
 	    this.deck = new Deck();
 	    this.players = new ArrayList<Player>();
 	    this.activePlayers = new ArrayList<Player>();
 	    
-	    this.littleBlind = littleBlind;
+	    this.smallBlind = smallBlind;
 	    this.bigBlind = bigBlind;
 	    this.table = new HashMap<String, Player>();
 	    this.potSize = new BigDecimal(0);
@@ -243,8 +243,13 @@ public class Table {
 	 * @throws InterruptedException 
 	 */
 	private void roundOfBetting() throws InterruptedException {
+		BigDecimal currentBet = BigDecimal.ZERO; // this is only for the start of preflop
 		int toAct = activePlayers.size();
-		BigDecimal currentBet = BigDecimal.ZERO;
+		if (actionCards.getCurrentCommunityCards().size() == 0) {
+			currentBet = bigBlind; // this is only for the start of preflop
+		}
+
+		
 		if (toAct == 0) {
 			return;
 		}
@@ -286,21 +291,33 @@ public class Table {
 				continue;
 				
 			}
-			
-			else if (playerMessage.getAction() == Actions.CALL) {
-				currentPlayer.adjustStackSize(currentBet);
+			else if (playerMessage.getAction() == Actions.BET) {
+				currentBet = currentBet.add(playerMessage.getRaiseAmount());		
 				
 				//need to keep in mind if its main pot or side pot etc
-				potSize.add(currentBet);
+				contributePot(currentPlayer, currentBet);
+
+			}
+			
+			else if (playerMessage.getAction() == Actions.CALL) {				
+				//need to keep in mind if its main pot or side pot etc
+				contributePot(currentPlayer, currentBet);
 				
 			}
 			else if (playerMessage.getAction() == Actions.RAISE) {
 				toAct = activePlayers.size();
-				currentBet = currentBet.add(playerMessage.getRaiseAmount());
-				currentPlayer.adjustStackSize(currentBet);
+				currentBet = currentBet.add(playerMessage.getRaiseAmount());		
 				
 				//need to keep in mind if its main pot or side pot etc
-				potSize.add(currentBet);
+				contributePot(currentPlayer, currentBet);
+
+			}
+			else if (playerMessage.getAction() == Actions.ALLIN) {
+				toAct = activePlayers.size();
+				currentBet = currentBet.add(playerMessage.getRaiseAmount());		
+				
+				//need to keep in mind if its main pot or side pot etc
+				contributePot(currentPlayer, currentBet);
 
 			}
 			
@@ -320,9 +337,23 @@ public class Table {
 	 * This will get the available action for a player
 	 * @return
 	 */
-	private ArrayList<String> getAvailableAction(Player player, BigDecimal currentBet) {
-		// TODO Auto-generated method stub
-		return null;
+	private ArrayList<Actions> getAvailableAction(Player player, BigDecimal currentBet) {
+		ArrayList<Actions> available = new ArrayList<>();
+		available.add(Actions.FOLD);
+
+		if (currentBet.compareTo(BigDecimal.ZERO) == 0) {
+			available.add(Actions.CHECK);
+			available.add(Actions.BET);
+		}
+		else if (currentBet.compareTo(player.getChipCount()) == -1) {
+			available.add(Actions.ALLIN);
+		}
+		else {
+			available.add(Actions.CALL);
+			available.add(Actions.RAISE);
+			available.add(Actions.ALLIN);
+		}
+		return available;
 	}
 
 
@@ -352,12 +383,56 @@ public class Table {
 		return null;
 	}
 
-
+	
+	private void contributePot(Player player, BigDecimal amount) {
+		player.adjustStackSize(amount);
+		potSize.add(amount);
+	}
+	
+	/*
+	 * posting the blinds for the little and the big blind
+	 */
 	private void postBlinds() {
-		// TODO Auto-generated method stub
+		//find the dealer, get the next two active players, first one is going to be small blind, second will be the big blind
+		int dealerSeatNumber = -1;
+		int smallBlindSeatNumber = -1;
+		int bigBlindSeatNumber = -1;
+		Player smallBlindActor = null;
+		Player bigBlindActor = null;
+
+
+		for(Player i: players) {
+			if(i.equals(dealer)){
+				dealerSeatNumber = players.indexOf(activePlayers);
+			}
+			
+		smallBlindSeatNumber = (dealerSeatNumber + 1) % players.size();
+		bigBlindSeatNumber = (dealerSeatNumber + 2) % players.size();
+			
+		}
+		
+		smallBlindActor = players.get(smallBlindSeatNumber);
+		bigBlindActor = players.get(bigBlindSeatNumber);
+		
+		contributePot(smallBlindActor, smallBlind);
+		contributePot(bigBlindActor, bigBlind);
 		
 	}
 	
 
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 }

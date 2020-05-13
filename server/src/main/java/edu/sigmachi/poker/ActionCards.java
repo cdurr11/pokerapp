@@ -38,15 +38,16 @@ public class ActionCards {
     }
 
     
-    public ArrayList<Card> getCurrentFlop(){
+
+    public ArrayList<Card> getCurrentCommunityCards(){
         return actionCards;
     }
     
     @Override
     public String toString() {
-        ArrayList<Card> currentFlop = getCurrentFlop();
+        ArrayList<Card> getCurrentCommunityCards = getCurrentCommunityCards();
         String showFlop = "";
-        for(int x = 0; x < currentFlop.size(); x++) {
+        for(int x = 0; x < getCurrentCommunityCards.size(); x++) {
             Card currentCard = actionCards.get(x);
             showFlop += currentCard.toString() + " ";
         }
