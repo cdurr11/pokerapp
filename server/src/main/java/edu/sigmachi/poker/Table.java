@@ -129,38 +129,49 @@ public class Table {
 		
 		//This will post the blinds for the correct players
 		postBlinds();
-		
-		if (activePlayers.size() > 1) {
-			//this is now preflop
+		int count = 0;
+		int river = 4;
+		while (activePlayers.size() > 1) {
 			roundOfBetting();
-			
-			if (activePlayers.size() > 1) {
-				//this is the flop
-				actionCards.drawFlop();
-				roundOfBetting();
-
-				if (activePlayers.size() > 1) {
-					//this is the turn
-					actionCards.drawTurn();
-					roundOfBetting();
-
-					if (activePlayers.size() > 1) {
-						actionCards.drawRiver();
-						roundOfBetting();
-						//need to figure out when there is a showdown on the last card
-						showDown();
-
-						
-					}
-				}
+			count+=1;
+			if (count == river) {
+				showDown();
 			}
-				
+		showDown();
 		}
+	}
 		
-		showDown(); //calculate the pot and evaluate everyones hand.
+//		if (activePlayers.size() > 1) {
+//			//this is now preflop
+//			roundOfBetting();
+//			
+//			if (activePlayers.size() > 1) {
+//				//this is the flop
+//				actionCards.drawFlop();
+//				roundOfBetting();
+//
+//				if (activePlayers.size() > 1) {
+//					//this is the turn
+//					actionCards.drawTurn();
+//					roundOfBetting();
+//
+//					if (activePlayers.size() > 1) {
+//						actionCards.drawRiver();
+//						roundOfBetting();
+//						//need to figure out when there is a showdown on the last card
+//						showDown();
+//
+//						
+//					}
+//				}
+//			}
+				
+//		}
+		
+//		showDown(); //calculate the pot and evaluate everyones hand.
 		
 
-	}
+//	}
 
 	/**
 	 * 
@@ -195,9 +206,44 @@ public class Table {
 		
 	}
 
-
+	/**
+	 * This is going to encompass a round of betting
+	 * 	- Take into account current bet, available actions
+	 * 	-
+	 */
 	private void roundOfBetting() {
-		// TODO Auto-generated method stub
+		int toAct = activePlayers.size();
+		int currentBet = 0;
+		if (toAct == 0) {
+			return;
+		}
+		
+		//here we need to pop off the queue
+		//take in the message from the player and parse into action, bet, etc
+		
+		//need to keep track of current bet
+		// pot size
+		// side pot
+		// all in, number of players to act
+//	    this.players = new ArrayList<Player>();
+//	    this.activePlayers = new ArrayList<Player>();
+//	    
+//	    this.littleBlind = littleBlind;
+//	    this.bigBlind = bigBlind;
+//	    this.table = new HashMap<String, Player>();
+//	    this.potSize = new BigDecimal(0);
+
+		
+		while (toAct > 0){
+			ClientActionMsg playerMessage = blockingQueue.take();
+			
+		}
+		
+		
+		
+		
+		
+		
 		
 	}
 
