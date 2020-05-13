@@ -146,11 +146,6 @@ public class Server {
     inputThread.start();
   }
   
-  /*
-   * Return true if message is successful and has been placed on the queue to be
-   * processed, false otherwise
-   */
-  
   private void initializeListeners() {
     //This callback is triggered when we fire the websocket on the client side
     //This is the only event that we should need a callback for.
@@ -168,6 +163,7 @@ public class Server {
       public void onData(SocketIOClient client, LoginAttemptMsg loginMsg, AckRequest ackRequest) {
         LoginAttemptResponseMsg response = handlePlayerAuthenticationAttempt(loginMsg, 
             client.getSessionId());
+        
         client.sendEvent("loginResponse", response);
       }
     });

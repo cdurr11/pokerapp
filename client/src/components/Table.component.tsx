@@ -92,7 +92,7 @@ class Table extends React.Component<TableProps, TableState> {
           className={"fold-button mod-unselectable"} disabled={this.props.spectating}>
             Fold
         </button>
-        <button onClick={() => this.props.raiseButtonCallback("100.00")} 
+        <button onClick={() => this.props.raiseButtonCallback(this.state.raiseValue)} 
           disabled={true} className="raise-button mod-unselectable">Raise</button>
         <input placeholder="RAISE AMT" className="raise-form" 
           disabled={this.props.spectating}>

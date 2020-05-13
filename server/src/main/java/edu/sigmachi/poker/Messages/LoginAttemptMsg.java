@@ -4,9 +4,7 @@ public class LoginAttemptMsg {
   private String playerName;
   private String providedPassword;
   
-  public LoginAttemptMsg() {
-    
-  }
+  public LoginAttemptMsg() {}
   
   public LoginAttemptMsg(String playerName, String providedPassword) {
     this.playerName = playerName;
