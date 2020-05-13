@@ -1,4 +1,4 @@
-package edu.sigmachi.poker.ConsoleMessages;
+package edu.sigmachi.poker.Messages;
 
 public class EndMsg implements InstantGameMsg, ConsoleMsg {
 

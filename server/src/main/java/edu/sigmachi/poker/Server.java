@@ -22,9 +22,15 @@ import com.corundumstudio.socketio.listener.ConnectListener;
 import com.corundumstudio.socketio.listener.DataListener;
 import com.corundumstudio.socketio.listener.DisconnectListener;
 
-import edu.sigmachi.poker.ConsoleMessages.AfterRoundMsg;
-import edu.sigmachi.poker.ConsoleMessages.ConsoleMsg;
-import edu.sigmachi.poker.ConsoleMessages.InstantGameMsg;
+import edu.sigmachi.poker.Messages.AfterRoundMsg;
+import edu.sigmachi.poker.Messages.ClientActionMsg;
+import edu.sigmachi.poker.Messages.ConnectionMsg;
+import edu.sigmachi.poker.Messages.ConsoleMsg;
+import edu.sigmachi.poker.Messages.DisconnectConnectMsg;
+import edu.sigmachi.poker.Messages.DisconnectionMsg;
+import edu.sigmachi.poker.Messages.InstantGameMsg;
+import edu.sigmachi.poker.Messages.LoginAttemptMsg;
+import edu.sigmachi.poker.Messages.LoginAttemptResponseMsg;
 
 public class Server {
   

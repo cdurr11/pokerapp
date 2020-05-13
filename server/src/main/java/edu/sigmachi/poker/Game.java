@@ -8,9 +8,10 @@ import java.util.concurrent.BlockingQueue;
 
 import com.corundumstudio.socketio.SocketIOServer;
 
-import edu.sigmachi.poker.ConsoleMessages.AfterRoundMsg;
-import edu.sigmachi.poker.ConsoleMessages.ConsoleMsg;
-import edu.sigmachi.poker.ConsoleMessages.InstantGameMsg;
+import edu.sigmachi.poker.Messages.AfterRoundMsg;
+import edu.sigmachi.poker.Messages.ConsoleMsg;
+import edu.sigmachi.poker.Messages.DisconnectConnectMsg;
+import edu.sigmachi.poker.Messages.InstantGameMsg;
 
 public class Game {
   private final String gamePassword;

@@ -2,13 +2,13 @@ package edu.sigmachi.poker;
 
 import java.math.BigDecimal;
 
-import edu.sigmachi.poker.ConsoleMessages.AddPlayerMoneyMsg;
-import edu.sigmachi.poker.ConsoleMessages.ConsoleMsg;
-import edu.sigmachi.poker.ConsoleMessages.EndMsg;
-import edu.sigmachi.poker.ConsoleMessages.PrintGameStateMsg;
-import edu.sigmachi.poker.ConsoleMessages.RestartMsg;
-import edu.sigmachi.poker.ConsoleMessages.StartMsg;
-import edu.sigmachi.poker.ConsoleMessages.SubtractPlayerMoneyMsg;
+import edu.sigmachi.poker.Messages.AddPlayerMoneyMsg;
+import edu.sigmachi.poker.Messages.ConsoleMsg;
+import edu.sigmachi.poker.Messages.EndMsg;
+import edu.sigmachi.poker.Messages.PrintGameStateMsg;
+import edu.sigmachi.poker.Messages.RestartMsg;
+import edu.sigmachi.poker.Messages.StartMsg;
+import edu.sigmachi.poker.Messages.SubtractPlayerMoneyMsg;
 
 public class REPL {
   final static int modifyMoneyInputLength = 3;

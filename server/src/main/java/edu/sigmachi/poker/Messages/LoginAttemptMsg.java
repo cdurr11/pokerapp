@@ -1,4 +1,4 @@
-package edu.sigmachi.poker;
+package edu.sigmachi.poker.Messages;
 
 public class LoginAttemptMsg {
   private String playerName;

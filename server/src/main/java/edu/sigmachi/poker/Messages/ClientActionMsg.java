@@ -1,9 +1,7 @@
-package edu.sigmachi.poker;
+package edu.sigmachi.poker.Messages;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-
-import edu.sigmachi.poker.ConsoleMessages.InstantGameMsg;
 
 public class ClientActionMsg implements InstantGameMsg {
   
