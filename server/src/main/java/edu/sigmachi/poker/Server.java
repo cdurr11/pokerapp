@@ -4,14 +4,15 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.corundumstudio.socketio.AckRequest;
 import com.corundumstudio.socketio.Configuration;
@@ -21,13 +22,9 @@ import com.corundumstudio.socketio.listener.ConnectListener;
 import com.corundumstudio.socketio.listener.DataListener;
 import com.corundumstudio.socketio.listener.DisconnectListener;
 
-import edu.sigmachi.poker.ConsoleMessages.AddPlayerMoneyMsg;
+import edu.sigmachi.poker.ConsoleMessages.AfterRoundMsg;
 import edu.sigmachi.poker.ConsoleMessages.ConsoleMsg;
-import edu.sigmachi.poker.ConsoleMessages.EndMsg;
-import edu.sigmachi.poker.ConsoleMessages.PrintGameStateMsg;
-import edu.sigmachi.poker.ConsoleMessages.RestartMsg;
-import edu.sigmachi.poker.ConsoleMessages.StartMsg;
-import edu.sigmachi.poker.ConsoleMessages.SubtractPlayerMoneyMsg;
+import edu.sigmachi.poker.ConsoleMessages.InstantGameMsg;
 
 public class Server {
   
@@ -35,14 +32,14 @@ public class Server {
   private final String gamePassword;
   private final Map<String, String> playerToSessionId = new HashMap<String, String>();
   private final Queue<DisconnectConnectMsg> connectionMsgQueue = new ConcurrentLinkedQueue<>(); 
-  private final Queue<ClientActionMsg> clientMsgQueue = new ConcurrentLinkedQueue<>();
-  private final Queue<ConsoleMsg> consoleMsgQueue = new ConcurrentLinkedQueue<>();
+  private final Queue<AfterRoundMsg> afterRoundMsgQueue = new ConcurrentLinkedQueue<>();
+  private final BlockingQueue<InstantGameMsg> instantGameMsgQueue = new LinkedBlockingQueue<>();
   
   /*Thread Safety:
    *  SocketIOServer is documented as fully threadsafe
    *  loginMsgQueue is shared between server and game thread but is a threadsafe queue
-   *  clientMsgQueue is shared between server and game thread but is a threadsafe queue
-   *  consoleMsgQueue is shared between server, game and repl thread but it is a threadsafe queue
+   *  afterRoundMsgQueue is shared between server, repl and game thread but is a threadsafe queue
+   *  afterRoundMsgQueue is shared between server, game and repl thread but it is a threadsafe queue
    */
   
   public Server(String gamePassword) {  
@@ -53,7 +50,7 @@ public class Server {
     this.gamePassword = gamePassword;
     this.server = new SocketIOServer(config);
     initializeGame();
-    initializeServerConsole(consoleMsgQueue);
+    initializeServerConsole(afterRoundMsgQueue, instantGameMsgQueue);
     initializeListeners();
     
     this.server.start();
@@ -61,7 +58,13 @@ public class Server {
   }
   
   private void handlePlayerAction(ClientActionMsg clientActionMsg) {
-    server.getBroadcastOperations().sendEvent("actionResponse", generateDummyServerRoundMsg());
+    try {
+      instantGameMsgQueue.put(clientActionMsg);
+    } catch (InterruptedException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+//    server.getBroadcastOperations().sendEvent("actionResponse", generateDummyServerRoundMsg());
   }
   
   private void handlePlayerConnection(SocketIOClient socketIOClient) {
@@ -90,7 +93,8 @@ public class Server {
       @Override
       public void run() {
         try {
-          Game game = new Game(server, gamePassword, connectionMsgQueue, clientMsgQueue, consoleMsgQueue);
+          Game game = new Game(server, gamePassword, connectionMsgQueue, 
+              afterRoundMsgQueue, instantGameMsgQueue);
           game.start();
         } catch(Exception e) {
           e.printStackTrace();
@@ -100,7 +104,9 @@ public class Server {
     gameThread.start();
   }
   
-  private void initializeServerConsole(Queue<ConsoleMsg> consoleMsgQueue) {
+  private void initializeServerConsole(Queue<AfterRoundMsg> afterRoundMsgQueue, 
+      BlockingQueue<InstantGameMsg> instantGameMsgQueue) {
+    
     Thread inputThread = new Thread(new Runnable() {
       @Override
       public void run() {
@@ -109,7 +115,12 @@ public class Server {
             Scanner scanner = new Scanner(System.in);
             String input = scanner.nextLine();
             ConsoleMsg consoleResponse = REPL.parseConsoleMsg(input);
-            consoleMsgQueue.add(consoleResponse);
+            if (consoleResponse instanceof InstantGameMsg) {
+              instantGameMsgQueue.put((InstantGameMsg) consoleResponse);
+            }
+            else {
+              afterRoundMsgQueue.add((AfterRoundMsg) consoleResponse);
+            }
             System.out.println("REPLY: Request has been successfully logged");
           } catch(IllegalArgumentException e) {
             System.out.println(e.getMessage());
@@ -118,6 +129,8 @@ public class Server {
             e.printStackTrace();
           } catch(IllegalStateException e) {
             //Exception from the scanner
+            e.printStackTrace();
+          } catch (InterruptedException e) {
             e.printStackTrace();
           }
           
@@ -169,42 +182,5 @@ public class Server {
   
   public void close() {
     server.stop();
-  }
-  public synchronized Queue<ConsoleMsg> getConsoleMsgQueue() {
-    return new LinkedList<>(consoleMsgQueue);
-  }
-  
-  public synchronized Queue<DisconnectConnectMsg> getConnectionMsgQueue() {
-    return new LinkedList<>(connectionMsgQueue);
-  }
-  
-  public synchronized Queue<ClientActionMsg> getClientMsgQueue() {
-    return new LinkedList<>(clientMsgQueue);
-  }
-  
-  
-  //Just an example of how you should make these messages, obviously a lot cleaner tho
-  private static ServerActionResponseMsg generateDummyServerRoundMsg() {
-    Map<String, BigDecimal> playerBalance = new HashMap<>();
-    playerBalance.put("cdurr", new BigDecimal("10.00"));
-    playerBalance.put("mheatzig", new BigDecimal("9.99"));
-    
-    Map<String, BigDecimal> currentBet= new HashMap<>();
-    currentBet.put("pruh", new BigDecimal("12.00"));
-    currentBet.put("mheatzig", new BigDecimal("13.00"));
-    
-    List<String> communityCards = new ArrayList<>();
-    communityCards.add("KH");
-    communityCards.add("4C");
-    communityCards.add("5D");
-    
-    List<String> mainPotContenders = new ArrayList<>(Arrays.asList("cdurr","pruh", "mheatzig"));
-    List<String> sidePotContenders = new ArrayList<>(Arrays.asList("rdelaus","blevin", "eheatzig"));
-    
-    BigDecimal mainPotValue = new BigDecimal("1200.01");
-    BigDecimal sidePotValue = new BigDecimal("1000.00");
-    
-    ServerActionResponseMsg response = new ServerActionResponseMsg(playerBalance, currentBet, "cdurr", communityCards, mainPotContenders, mainPotValue, sidePotContenders, sidePotValue);
-    return response;
-  }
+  } 
 }

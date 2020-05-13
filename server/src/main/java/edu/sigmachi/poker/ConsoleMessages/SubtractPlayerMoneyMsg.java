@@ -2,7 +2,7 @@ package edu.sigmachi.poker.ConsoleMessages;
 
 import java.math.BigDecimal;
 
-public class SubtractPlayerMoneyMsg implements ConsoleMsg {
+public class SubtractPlayerMoneyMsg implements AfterRoundMsg, ConsoleMsg {
   private final String playerName;
   private final BigDecimal dollarAmount;
   

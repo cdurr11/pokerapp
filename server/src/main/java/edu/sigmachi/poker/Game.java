@@ -4,10 +4,13 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 
 import com.corundumstudio.socketio.SocketIOServer;
 
+import edu.sigmachi.poker.ConsoleMessages.AfterRoundMsg;
 import edu.sigmachi.poker.ConsoleMessages.ConsoleMsg;
+import edu.sigmachi.poker.ConsoleMessages.InstantGameMsg;
 
 public class Game {
   private final String gamePassword;
@@ -16,16 +19,16 @@ public class Game {
   //TODO replace this with the cards
   private Map<String, String> playersToCards;
   private final Queue<DisconnectConnectMsg> connectionMsgQueue;
-  private final Queue<ClientActionMsg> clientMsgQueue;
-  private final Queue<ConsoleMsg> consoleMsgQueue;
+  private final Queue<AfterRoundMsg> afterRoundMsgQueue;
+  private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
   
   
   public Game(SocketIOServer server, String gamePassword,Queue<DisconnectConnectMsg> connectionMsgQueue, 
-      Queue<ClientActionMsg> clientMsgQueue, Queue<ConsoleMsg> consoleMsgQueue) {
-    this.connectionMsgQueue = connectionMsgQueue;
-    this.clientMsgQueue = clientMsgQueue;
+      Queue<AfterRoundMsg> afterRoundMsgQueue, BlockingQueue<InstantGameMsg> instantGameMsgQueue) {
     this.gamePassword = gamePassword;
-    this.consoleMsgQueue = consoleMsgQueue;
+    this.connectionMsgQueue = connectionMsgQueue;
+    this.instantGameMsgQueue = instantGameMsgQueue;
+    this.afterRoundMsgQueue = afterRoundMsgQueue;
   }
   
   public void start() {
