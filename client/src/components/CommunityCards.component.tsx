@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
-import card from '../static/10C.svg';
+// import card from '../static/10C.svg';
+var card = require('../static/10C.svg');
 
 interface CommunityCardsProps {
   communityCards: string[];
@@ -7,7 +8,7 @@ interface CommunityCardsProps {
 
 class CommunityCards extends Component<CommunityCardsProps> {
 
-  makeCardsDOM() {
+  makeCardsDOM() : JSX.Element[] {
     var cardsDOM : JSX.Element[] = [];
     this.props.communityCards.forEach((e, index) => {
       cardsDOM.push(<img className="mod-right-card" key={index} alt="" src={card}></img>)

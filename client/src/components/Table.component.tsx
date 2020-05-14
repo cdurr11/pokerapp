@@ -1,9 +1,11 @@
 import React, {Component, ChangeEvent} from 'react';
 import CommunityCards from "./CommunityCards.component"
 import MyHand from "./MyHand.component"
-import pokerTableImg from '../static/pokertable.svg';
+// import pokerTableImg from '../static/pokertable.svg';
+import { connect } from 'react-redux';
 import '../css/table.css';
-
+import { AppState } from '../redux/reducers/reducer';
+var pokerTableImg = require('../static/pokertable.svg');
 
 interface TableState {
   playerNameValue: string;
@@ -26,6 +28,22 @@ interface TableProps {
   myCards: string[];
   communityCards: string[];
 };
+
+interface TableOwnProps {
+  nonRaiseButtonCallback(selectedAction: string): void;
+  raiseButtonCallback(raiseAmount: string): void;
+  handleLogin(playerName: string, groupPassword: string): void;
+}
+
+function mapStateToProps(state: AppState, ownProps: TableOwnProps): TableProps {
+  return {
+    spectating: state.spectating,
+    loggedIn: state.loggedIn,
+    myCards: state.myCards,
+    communityCards: state.communityCards,
+    ...ownProps,
+  };
+}
 
 class Table extends React.Component<TableProps, TableState> {
   constructor(props: TableProps) {
@@ -107,4 +125,4 @@ class Table extends React.Component<TableProps, TableState> {
     );
   }
 }
-export default Table;
+export default connect(mapStateToProps)(Table);

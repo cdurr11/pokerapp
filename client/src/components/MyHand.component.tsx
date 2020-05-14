@@ -1,5 +1,8 @@
 import React, {Component} from 'react';
-import card from '../static/10C.svg';
+// import card from '../static/10C.svg';
+var card = require('../static/10C.svg');
+
+
 
 interface MyHandProps {
   myCards: string[];
@@ -18,8 +21,6 @@ class MyHand extends Component<MyHandProps> {
   render() {
     return (
       <div className="ctn-my-hand">
-        {/* <img alt="" src={card}/>
-        <img className="mod-right-card" alt="" src={card}/> */}
         {this.makeCardsDOM()}
       </div>
     );

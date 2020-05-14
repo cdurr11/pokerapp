@@ -3,19 +3,12 @@ import '../css/app.css';
 import OpponentSidePanel from './OpponentSidePanel.component';
 import Table from "./Table.component"
 import io from 'socket.io-client';
+import { bindActionCreators } from 'redux';
+import { connect } from 'react-redux';
+import { actionCreators } from '../redux/actions';
+import { AppState } from '../redux/reducers/reducer'
 
 const socket = io.connect("http://localhost:9092"); 
-
-interface AppState {
-  playerName: string;
-  communityCards: string[];
-  myCards: string[];
-  playerOrder: string[];
-  playerCards: {};
-  currentBet: string | undefined;
-  spectating: boolean,
-  loggedIn: boolean,
-}
 
 interface ClientMsgType {
   playerName: string,
@@ -23,25 +16,26 @@ interface ClientMsgType {
   raiseAmount: string,
 }
 
-interface LoginMsgType {
+interface LoginMsgType { 
   playerName: string,
   providedPassword: string,
 }
 
-class App extends React.Component<{},AppState> {
+interface AppProps {
+  playerName: string,
+}
+
+function mapDispatchToProps(dispatch: any) {
+  return bindActionCreators(actionCreators, dispatch)
+}
+
+function mapStateToProps(state: AppState): AppProps {
+  return {playerName: state.playerName};
+}
+
+class App extends React.Component<AppProps,AppState> {
   constructor(props: any) {
     super(props);
-    this.state = {
-      playerOrder: [],
-      playerCards: {},
-      playerName: "anonymousPlayer",
-      myCards: ["",""],
-      communityCards: [],
-      currentBet: undefined,
-      spectating: true,
-      loggedIn: false,
-    }
-
     this.nonRaiseButtonCallback = this.nonRaiseButtonCallback.bind(this);
     this.raiseButtonCallback = this.raiseButtonCallback.bind(this);
   }
@@ -61,7 +55,7 @@ class App extends React.Component<{},AppState> {
 
   nonRaiseButtonCallback(selectedAction: string): void {
     const clientMsg: ClientMsgType = {
-      playerName: this.state.playerName,
+      playerName: this.props.playerName,
       action: selectedAction,
       raiseAmount: "",
     };
@@ -91,21 +85,12 @@ class App extends React.Component<{},AppState> {
   render(): JSX.Element {
     return (
       <div className="ctn-app">
-        <OpponentSidePanel 
-          playerOrder={this.state.playerOrder}
-          playerCards={this.state.playerCards}
-          spectating={this.state.spectating}
-          playerName={this.state.playerName}
-        />
+        <OpponentSidePanel />
         <div className="ctn-middle">
-          <Table 
+          <Table
             nonRaiseButtonCallback={this.nonRaiseButtonCallback}
             raiseButtonCallback={this.raiseButtonCallback}
             handleLogin={this.handleLogin}
-            spectating={this.state.spectating}
-            loggedIn={this.state.loggedIn}
-            communityCards={this.state.communityCards}
-            myCards={this.state.myCards}
           />
           <div className="bottom-border-elem"/>
         </div>
@@ -114,4 +99,4 @@ class App extends React.Component<{},AppState> {
     );
   } 
 }
-export default App;
+export default connect(mapStateToProps, mapDispatchToProps)(App);
