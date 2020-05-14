@@ -34,21 +34,20 @@ public class Player {
      */
     public Player(String id, BigDecimal stackSize, boolean inPlay){
     	this.id = id;
-        this.stackSize = stackSize;
-        this.inPlay = inPlay;
-//        this.deck = new Deck();
+      this.stackSize = stackSize;
+      this.inPlay = inPlay;
+//      this.deck = new Deck();
 
     }
     
-    
-    
     private void checkRep() {
+      // CODY : Max Goldman would be proud :,)
         assert (this.stackSize.compareTo(BigDecimal.ZERO) > 0);
     }
 
 	public void drawHand() {
 		right = deck.drawCard();
-    	left = deck.drawCard();		
+    left = deck.drawCard();		
 	}
     /**
      * @return the row 
