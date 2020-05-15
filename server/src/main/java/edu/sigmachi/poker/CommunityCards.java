@@ -2,7 +2,7 @@ package edu.sigmachi.poker;
 
 import java.util.*;
 
-public class ActionCards {
+public class CommunityCards {
     private ArrayList<Card> actionCards;
     private Deck deck;
 

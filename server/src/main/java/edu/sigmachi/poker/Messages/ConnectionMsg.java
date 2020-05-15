@@ -13,7 +13,7 @@ public class ConnectionMsg implements DisconnectConnectMsg{
   public UUID getSessionID() {
     return this.sessionID;
   }
-  public String playerName() {
+  public String getPlayerName() {
     return this.playerName;
   }
 }

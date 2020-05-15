@@ -1,13 +1,19 @@
 package edu.sigmachi.poker;
 
 import java.math.BigDecimal;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
 
-import edu.sigmachi.poker.Messages.*;
+import edu.sigmachi.poker.Messages.ClientActionMsg;
 import edu.sigmachi.poker.Messages.ClientActionMsg.Actions;
+import edu.sigmachi.poker.Messages.EndMsg;
+import edu.sigmachi.poker.Messages.InstantGameMsg;
+import edu.sigmachi.poker.Messages.PrintGameStateMsg;
+import edu.sigmachi.poker.Messages.RestartMsg;
+import edu.sigmachi.poker.Messages.ServerActionResponseMsg;
 
 /**
  * No Limit Texas Hold'em
@@ -19,7 +25,12 @@ import edu.sigmachi.poker.Messages.ClientActionMsg.Actions;
  */
 
 public class Table {
-
+  
+  private static Integer cardsNumAtPreflop = 0;
+  private static Integer cardsNumAtFlop = 3;
+  private static Integer cardsNumAtTurn = 4;
+  private static Integer cardsNumAtRiver = 5;
+  
   // this map is going to come in to play with everything already filled out
   private final Map<String, Player> table; // This is the players map --> mapping a player name to a player object.
                                            // which contains the chip count, hand, inPlay boolean for that player
@@ -28,7 +39,7 @@ public class Table {
   private Deck deck;
 
   /** This consists of the cards on the table: Flop, Turn, and the River. */
-  private ActionCards actionCards;
+  private CommunityCards actionCards;
 
   /** This will keep track of the current pot size. */
   private BigDecimal potSize;
@@ -59,48 +70,30 @@ public class Table {
   private Integer dealerPosition;
 
   /** Message queue */
-  private BlockingQueue<ClientActionMsg> messageQueue;
+  private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
 
   /** Server queue */
   private ServerActionResponseMsg serverMessage;
-
-  /** A single message from the client */
-  private ClientActionMsg playerMessage;
 
   /**
    * Current player
    */
   private Player currentPlayer;
   
-  
   /**
    * The player who made the last action after the river
    */
   private Player lastPlayerToAct;
 
-  
-  
-  
-  private static Integer cardsNumAtPreflop = 0;
-  private static Integer cardsNumAtFlop = 3;
-  private static Integer cardsNumAtTurn = 4;
-  private static Integer cardsNumAtRiver = 5;
-
-
-
-
-  
   /**
    * Get available actions for a player
    */
   private ArrayList<Actions> availableActions;
-
-  
   
   /**
    * Pass in little/big blinds
    */
-  public Table(BigDecimal smallBlind, BigDecimal bigBlind) {
+  public Table(BigDecimal smallBlind, BigDecimal bigBlind, BlockingQueue<InstantGameMsg> instantGameMsgQueue) {
     this.deck = new Deck();
     this.players = new ArrayList<Player>();
     this.activePlayers = new ArrayList<Player>();
@@ -109,18 +102,13 @@ public class Table {
     this.bigBlind = bigBlind;
     this.table = new HashMap<String, Player>();
     this.potSize = new BigDecimal(0);
-    this.actionCards = new ActionCards();
-    this.dealer = new Player(null, BigDecimal.ZERO, false);
-    
-    this.smallBlindPlayer = new Player(null, BigDecimal.ZERO, false);
-    this.bigBlindPlayer = new Player(null, BigDecimal.ZERO, false);
+    this.actionCards = new CommunityCards();
+    this.dealer = players.get(0);
+    this.smallBlindPlayer = players.get(1);
+    this.bigBlindPlayer = players.get(2);
 
-  
-    this.messageQueue = new LinkedBlockingDeque<>();
-    
-
+    this.instantGameMsgQueue = instantGameMsgQueue;
   }
-
   /*
    * This will add a player to the game.
    */
@@ -156,28 +144,25 @@ public class Table {
    * 
    * @throws InterruptedException
    * 
-   * 
-   * 
-   * 
-   * 
-   * 
    */
 
-
-  public void playHand() throws InterruptedException {
+  
+  public RoundOfBettingRetCode playHand() throws InterruptedException {
+    // @MARK: set the current player here, whoever it is, person left of dealer?
     freshHand();
     postBlinds();
     while (activePlayers.size() > 1) {
-      roundOfBetting();
-      // CODY : river should be a private static int and should be initialized as a class variable
-      // Mark: changed river
-      // CODY : If you have multiple of these for flop, turn etc you might want to use a mapped enum, google it
-      // Mark: not sure hmm
+      RoundOfBettingRetCode roundOfBettingResult = roundOfBetting();
+      // Need to propagate this to the Game class so that game can be restarted
+      if (roundOfBettingResult != RoundOfBettingRetCode.NORMAL) {
+        return roundOfBettingResult;
+      }
       if (actionCards.getCurrentCommunityCards().size() == cardsNumAtRiver) {
         showDown();
       }
       showDown();
     }
+    return RoundOfBettingRetCode.NORMAL;
   }
 
 
@@ -187,7 +172,7 @@ public class Table {
    * the dealer is shuffle the deck pass out hands to each player 
    */
   private void freshHand() {
-    actionCards = new ActionCards();
+    actionCards = new CommunityCards();
     deck = new Deck();
     dealCards();
   }
@@ -254,26 +239,16 @@ public class Table {
   private void resetBoard() {
     // TODO Auto-generated method stub
   }
-
+  
   /**
    * This is going to encompass a round of betting - Take into account current
    * bet, available actions -
    * 
    * @throws InterruptedException
    */
-  private void roundOfBetting() throws InterruptedException {
-    // CODY : So we need to dispatch send a StartOfRoundMsg here
-    // CODY : code for this:
+  private RoundOfBettingRetCode roundOfBetting() throws InterruptedException {
     // server.getBroadcastOperations().sendEvent("startOfRound", new
     // StartOfRoundMsg);
-	  
-	  // Mark: Ok sounds good ^
-	  
-    // CODY : You can get the server from the game class when you init it. server is
-    // threadsafe
-	  
-	  //so do i have to do anything different than the code above?
-	  
 	  
     BigDecimal currentBet = BigDecimal.ZERO; // this is only for the start of preflop
     int toAct = activePlayers.size();
@@ -282,78 +257,68 @@ public class Table {
     }
 
     if (toAct == 0) {
-      return;
+      return RoundOfBettingRetCode.NORMAL;
     }
 
-    // here we need to pop off the queue
-    // take in the message from the player and parse into action, bet, etc
-    // need to keep track of current bet
-    // pot size
-    // side pot
-    // all in, number of players to act
-
     while (toAct > 0) {
-      // whose turn is it, then we would need to get avaialble acitons
-      // CODY : This msg gets sent to the client.  We keep track of the turn so below you should be getting the currentTurn from
-      // CODY : the table class, probably as an instance variable
-      ServerActionResponseMsg serverMessage = getMessage();
-      currentPlayer = getPlayer(serverMessage.getCurrentTurn());
-      availableActions = getAvailableAction(currentPlayer, currentBet);
-
-      // here we finally send the current table situation along with the players
-      // actions to the player... then the player responds accordingly
-      // after message is sent back to the user and then they respond
-      playerMessage = messageQueue.take();
+      InstantGameMsg instantGameMsg;
+      while (true) {
+        //take messages until we don't get a PrintGameStateMsg
+        instantGameMsg = instantGameMsgQueue.take();
+        if (instantGameMsg instanceof RestartMsg) {
+          return RoundOfBettingRetCode.RESTART;
+        }
+        else if (instantGameMsg instanceof EndMsg) {
+          return RoundOfBettingRetCode.END;
+        }
+        else if (instantGameMsg instanceof PrintGameStateMsg ) {
+          printGameState();
+        }
+        else if (instantGameMsg instanceof ClientActionMsg) {
+          // Check to make sure that the message we get is from the right player
+          if (((ClientActionMsg) instantGameMsg).getPlayerName().equals(currentPlayer)) {
+            break;
+          }
+        }
+        else {
+          throw new RuntimeException("Unknown InstantGameMsg");
+        }
+      }
+      ClientActionMsg clientMsg = (ClientActionMsg) instantGameMsg;
       
-      if (playerMessage.getAction() == Actions.FOLD) {
+      availableActions = getAvailableAction(currentPlayer, currentBet);
+      
+      if (clientMsg.getAction() == Actions.FOLD) {
         activePlayers.remove(activePlayers.indexOf(currentPlayer));
       }
-      else if (playerMessage.getAction() == Actions.CHECK) {
-        // CODY : continue makes you go back to the top of the while look meaning
-        // CODY : that toAct would not get decremented which I do not think is what you want?
-    	//youre right
-    	toAct--;
+      else if (clientMsg.getAction() == Actions.CHECK) {
+        toAct--;
         continue;
       } 
-//      else if (playerMessage.getAction() == Actions.BET) {
-//        currentBet = currentBet.add(playerMessage.getRaiseAmount());
-//        // CODY : I don't get why we need BET, CALL and RAISE, Don't we just need CALL and RAISE?
-//        
-//        //Ok i guess youre right we can treat BET the same as raise?
-//        
-        // need to keep in mind if its main pot or side pot etc
-//        contributePot(currentPlayer, currentBet);
-//      }
-      
-      else if (playerMessage.getAction() == Actions.CALL) {
+      else if (clientMsg.getAction() == Actions.CALL) {
         // need to keep in mind if its main pot or side pot etc
         contributePot(currentPlayer, currentBet);
       } 
-      else if (playerMessage.getAction() == Actions.RAISE) {
+      else if (clientMsg.getAction() == Actions.RAISE) {
         toAct = activePlayers.size();
-        currentBet = currentBet.add(playerMessage.getRaiseAmount());
+        currentBet = currentBet.add(clientMsg.getRaiseAmount());
 
         // need to keep in mind if its main pot or side pot etc
         contributePot(currentPlayer, currentBet);
         lastPlayerToAct = currentPlayer;
-        
       } 
-      else if (playerMessage.getAction() == Actions.ALLIN) {
+      else if (clientMsg.getAction() == Actions.ALLIN) {
         toAct = activePlayers.size();
-        // CODY : Wouldn't the current bet not increase here bc the person is going all in bc they
-        // CODY : don't have enough money to match the bet?
-        
-        //mark -- yeah youre right thanks
-        
-        //currentBet = currentBet.add(playerMessage.getRaiseAmount());
 
         // need to keep in mind if its main pot or side pot etc -- when an all in is made, that is when the side pot is created****
         contributePot(currentPlayer, currentPlayer.getChipCount());
         lastPlayerToAct = currentPlayer;
-
       }
       toAct--;
+      // @MARK : Increment the current player here or somewhere
     }
+    
+    return RoundOfBettingRetCode.NORMAL;
   }
 
   /**
@@ -363,10 +328,6 @@ public class Table {
    */
   private ArrayList<Actions> getAvailableAction(Player player, BigDecimal currentBet) {
     ArrayList<Actions> available = new ArrayList<>();
-    // CODY : Did you cover all the cases, why can you only check when it = 0?
-    
-    // cody, you can only check when the current bet is zero = yes, however there is case where the big blind has the option when the current bet == bigblind
-    
     
     available.add(Actions.FOLD);
     if (currentBet.compareTo(BigDecimal.ZERO) == 0) {
@@ -391,34 +352,6 @@ public class Table {
       available.add(Actions.ALLIN);
     }
     return available;
-  }
-
-  /**
-   * 
-   * @param currentTurn which is a string then will go through players, match the
-   *                    string and return the player object
-   * @return player object
-   */
-  private Player getPlayer(String currentTurn) {
-    // CODY : Why does this method exist if you have the hashmap above that should do this
-    Player playerMatch = null;
-    for (Player i : players) {
-      if (i.getName().equals(currentTurn)) {
-        playerMatch = i;
-        break;
-      }
-    }
-    return playerMatch;
-  }
-
-  /**
-   * This is just here temp
-   * 
-   * @return null
-   */
-  private ServerActionResponseMsg getMessage() {
-    // TODO Auto-generated method stub
-    return null;
   }
 
   private void contributePot(Player player, BigDecimal amount) {
@@ -450,6 +383,10 @@ public class Table {
 
     contributePot(smallBlindPlayer, smallBlind);
     contributePot(bigBlindPlayer, bigBlind);
-
+  }
+  
+  
+  private void printGameState() {
+    //TODO
   }
 }
