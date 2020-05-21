@@ -1,20 +1,17 @@
 package edu.sigmachi.poker;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
+import java.util.UUID;
 
 public class Player {
 
     private String id;
-    
-    private BigDecimal stackSize;
-
+    private UUID sessionID;
+    private BigDecimal balance;
     private Card left;
     private Card right;
     private Deck deck;
-    
-    
-    private final boolean inPlay;
+    private boolean inPlay = true;
 
     
     /*
@@ -32,17 +29,15 @@ public class Player {
      * @param Right Card Object
      * @param val passed in value of the card value
      */
-    public Player(String id, BigDecimal stackSize, boolean inPlay){
+    public Player(String id, UUID sessionID,
+        BigDecimal balance) {
     	this.id = id;
-      this.stackSize = stackSize;
-      this.inPlay = inPlay;
-//      this.deck = new Deck();
-
+    	this.sessionID = sessionID;
+      this.balance = balance;
     }
     
     private void checkRep() {
-      // CODY : Max Goldman would be proud :,)
-        assert (this.stackSize.compareTo(BigDecimal.ZERO) > 0);
+        assert (this.balance.compareTo(BigDecimal.ZERO) > 0);
     }
 
 	public void drawHand() {
@@ -69,7 +64,7 @@ public class Player {
      */
     public boolean inPlay() {
     	checkRep();
-        return this.inPlay;
+      return this.inPlay;
     }
     
     /**
@@ -77,17 +72,28 @@ public class Player {
      * @return 
      */
     public void adjustStackSize(BigDecimal callSize) {
-    	this.stackSize = stackSize.subtract(callSize);
+    	this.balance = balance.subtract(callSize);
     }
     
     
     /**
      * @return the value 
      */
-    public BigDecimal getChipCount() {
-        return this.stackSize;
+    public BigDecimal getBalance() {
+        return this.balance;
     }
     
+    public void setInPlay(boolean inPlay) {
+      this.inPlay = inPlay;
+    }
+    
+    public void setSessionID(UUID sessionID) {
+      this.sessionID = sessionID;
+    }
+    
+    public UUID getSessionID() {
+      return this.sessionID;
+    }
     
     /**
      * @return the name of the player 
@@ -95,9 +101,6 @@ public class Player {
     public String getName() {
         return id;
     }
-
-
-    
 }
 
 

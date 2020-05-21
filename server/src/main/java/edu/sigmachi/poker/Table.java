@@ -3,8 +3,11 @@ package edu.sigmachi.poker;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 
 import edu.sigmachi.poker.Messages.ClientActionMsg;
@@ -13,7 +16,6 @@ import edu.sigmachi.poker.Messages.EndMsg;
 import edu.sigmachi.poker.Messages.InstantGameMsg;
 import edu.sigmachi.poker.Messages.PrintGameStateMsg;
 import edu.sigmachi.poker.Messages.RestartMsg;
-import edu.sigmachi.poker.Messages.ServerActionResponseMsg;
 
 /**
  * No Limit Texas Hold'em
@@ -37,6 +39,8 @@ public class Table {
 
   /** The deck of cards. */
   private Deck deck;
+  
+  private BigDecimal initialBuyIn;
 
   /** This consists of the cards on the table: Flop, Turn, and the River. */
   private CommunityCards actionCards;
@@ -44,11 +48,11 @@ public class Table {
   /** This will keep track of the current pot size. */
   private BigDecimal potSize;
 
-  /** This will keep track of the total players in the game. */
-  private final ArrayList<Player> players;
+  /* this will keep a definitive ordering of all of the players in the game */
+  private final List<Player> activePlayers;
 
   /** This will keep track of which players are in the hand. */
-  private final ArrayList<Player> activePlayers;
+  private final List<Player> currentPlayersInHand;
 
   /** This is the little blind */
   private final BigDecimal smallBlind;
@@ -72,9 +76,6 @@ public class Table {
   /** Message queue */
   private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
 
-  /** Server queue */
-  private ServerActionResponseMsg serverMessage;
-
   /**
    * Current player
    */
@@ -84,45 +85,62 @@ public class Table {
    * The player who made the last action after the river
    */
   private Player lastPlayerToAct;
-
-  /**
-   * Get available actions for a player
-   */
-  private ArrayList<Actions> availableActions;
   
-  /**
-   * Pass in little/big blinds
-   */
-  public Table(BigDecimal smallBlind, BigDecimal bigBlind, BlockingQueue<InstantGameMsg> instantGameMsgQueue) {
+  public Table(BigDecimal smallBlind, BigDecimal bigBlind, 
+      BlockingQueue<InstantGameMsg> instantGameMsgQueue, BigDecimal initialBuyIn) {
     this.deck = new Deck();
-    this.players = new ArrayList<Player>();
     this.activePlayers = new ArrayList<Player>();
+    this.currentPlayersInHand = new ArrayList<Player>();
 
     this.smallBlind = smallBlind;
     this.bigBlind = bigBlind;
     this.table = new HashMap<String, Player>();
     this.potSize = new BigDecimal(0);
     this.actionCards = new CommunityCards();
-    this.dealer = players.get(0);
-    this.smallBlindPlayer = players.get(1);
-    this.bigBlindPlayer = players.get(2);
+    this.dealer = activePlayers.get(0);
+    this.smallBlindPlayer = activePlayers.get(1);
+    this.bigBlindPlayer = activePlayers.get(2);
 
     this.instantGameMsgQueue = instantGameMsgQueue;
+    this.initialBuyIn = initialBuyIn;
   }
   /*
    * This will add a player to the game.
    */
-  public void addPlayer(Player player) {
-    table.put(player.getName(), player);
-    players.add(player);
+  public void addPlayer(String playerName, UUID sessionID) {
+    // Player is logging in again
+    if (table.keySet().contains(playerName)) {
+      table.get(playerName).setInPlay(true);
+      table.get(playerName).setSessionID(sessionID);
+    }
+    // Need to create a new player
+    else {
+      Player player = new Player(playerName, sessionID, this.initialBuyIn);
+      table.put(player.getName(), player);
+      activePlayers.add(player);
+    }
   }
 
-  /*
-   * This will remove a player from the game.
+  /**
+   * Sets a player that is in the game to inactive in the table map and 
+   * removes them from active players.
    */
-  public void removePlayer(Player player) {
-    table.remove(player.getName());
-    players.remove(players.indexOf(player));
+  public boolean removePlayer(UUID sessionID) {
+    boolean foundInTableFlag = false;
+    for (String player : table.keySet()) { 
+      if (table.get(player).getSessionID().equals(sessionID)) {
+        table.get(player).setInPlay(false);
+        foundInTableFlag = true;
+      }
+    }
+    for (int i = 0; i < this.activePlayers.size(); i++) {
+      currentPlayer = this.activePlayers.get(i);
+      if (currentPlayer.getSessionID().equals(sessionID)) {
+        activePlayers.remove(i);
+        return foundInTableFlag;
+      }
+    }
+    return false;
   }
 
   /**
@@ -151,7 +169,7 @@ public class Table {
     // @MARK: set the current player here, whoever it is, person left of dealer?
     freshHand();
     postBlinds();
-    while (activePlayers.size() > 1) {
+    while (currentPlayersInHand.size() > 1) {
       RoundOfBettingRetCode roundOfBettingResult = roundOfBetting();
       // Need to propagate this to the Game class so that game can be restarted
       if (roundOfBettingResult != RoundOfBettingRetCode.NORMAL) {
@@ -178,7 +196,7 @@ public class Table {
   }
 
   private void dealCards() {
-    for (Player player : activePlayers) {
+    for (Player player : currentPlayersInHand) {
       player.drawHand();
     }
   }
@@ -199,22 +217,22 @@ public class Table {
    * 
    */
   private void showDown() {
-	  int temporary = activePlayers.indexOf(lastPlayerToAct);
+	  int temporary = currentPlayersInHand.indexOf(lastPlayerToAct);
 	  int nextTemp = -1;
 	  int x = 1;
 	  Player tempWinner = null;
-	  while (x < activePlayers.size()) {
-		  temporary = temporary % activePlayers.size();
-		  nextTemp = (temporary + 1) %activePlayers.size();
-		  tempWinner = evaluateHand(activePlayers.get(temporary), activePlayers.get(nextTemp));
+	  while (x < currentPlayersInHand.size()) {
+		  temporary = temporary % currentPlayersInHand.size();
+		  nextTemp = (temporary + 1) %currentPlayersInHand.size();
+		  tempWinner = evaluateHand(currentPlayersInHand.get(temporary), currentPlayersInHand.get(nextTemp));
 		  if (tempWinner.equals(null)) {
 			  x++;
 		  }
-		  else if (tempWinner.equals(activePlayers.get(temporary))){
-				  activePlayers.remove(activePlayers.get(nextTemp));
+		  else if (tempWinner.equals(currentPlayersInHand.get(temporary))){
+				  currentPlayersInHand.remove(currentPlayersInHand.get(nextTemp));
 			  }
 		  else {
-			  activePlayers.remove(activePlayers.get(temporary));
+			  currentPlayersInHand.remove(currentPlayersInHand.get(temporary));
 		  }
 	  }
   }
@@ -251,7 +269,7 @@ public class Table {
     // StartOfRoundMsg);
 	  
     BigDecimal currentBet = BigDecimal.ZERO; // this is only for the start of preflop
-    int toAct = activePlayers.size();
+    int toAct = currentPlayersInHand.size();
     if (actionCards.getCurrentCommunityCards().size() == cardsNumAtPreflop) {
       currentBet = bigBlind;
     }
@@ -286,10 +304,10 @@ public class Table {
       }
       ClientActionMsg clientMsg = (ClientActionMsg) instantGameMsg;
       
-      availableActions = getAvailableAction(currentPlayer, currentBet);
+      List<Actions> availableActions = getAvailableAction(currentPlayer, currentBet);
       
       if (clientMsg.getAction() == Actions.FOLD) {
-        activePlayers.remove(activePlayers.indexOf(currentPlayer));
+        currentPlayersInHand.remove(currentPlayersInHand.indexOf(currentPlayer));
       }
       else if (clientMsg.getAction() == Actions.CHECK) {
         toAct--;
@@ -300,7 +318,7 @@ public class Table {
         contributePot(currentPlayer, currentBet);
       } 
       else if (clientMsg.getAction() == Actions.RAISE) {
-        toAct = activePlayers.size();
+        toAct = currentPlayersInHand.size();
         currentBet = currentBet.add(clientMsg.getRaiseAmount());
 
         // need to keep in mind if its main pot or side pot etc
@@ -308,10 +326,10 @@ public class Table {
         lastPlayerToAct = currentPlayer;
       } 
       else if (clientMsg.getAction() == Actions.ALLIN) {
-        toAct = activePlayers.size();
+        toAct = currentPlayersInHand.size();
 
         // need to keep in mind if its main pot or side pot etc -- when an all in is made, that is when the side pot is created****
-        contributePot(currentPlayer, currentPlayer.getChipCount());
+        contributePot(currentPlayer, currentPlayer.getBalance());
         lastPlayerToAct = currentPlayer;
       }
       toAct--;
@@ -326,8 +344,8 @@ public class Table {
    * 
    * @return
    */
-  private ArrayList<Actions> getAvailableAction(Player player, BigDecimal currentBet) {
-    ArrayList<Actions> available = new ArrayList<>();
+  private List<Actions> getAvailableAction(Player player, BigDecimal currentBet) {
+    List<Actions> available = new ArrayList<>();
     
     available.add(Actions.FOLD);
     if (currentBet.compareTo(BigDecimal.ZERO) == 0) {
@@ -343,7 +361,7 @@ public class Table {
         available.add(Actions.ALLIN);
 
         }
-    else if (currentBet.compareTo(player.getChipCount()) == 1) {
+    else if (currentBet.compareTo(player.getBalance()) == 1) {
       available.add(Actions.ALLIN);
     } 
     else {
@@ -358,6 +376,10 @@ public class Table {
     player.adjustStackSize(amount);
     potSize.add(amount);
   }
+  
+  public void modifyPlayerBalance(String playerName, BigDecimal addition) {
+    // TODO
+  }
 
   /*
    * posting the blinds for the little and the big blind
@@ -370,16 +392,16 @@ public class Table {
     int bigBlindSeatNumber = -1;
 
 
-    for (Player i : players) {
+    for (Player i : activePlayers) {
       if (i.equals(dealer)) {
-        dealerSeatNumber = players.indexOf(i);
+        dealerSeatNumber = activePlayers.indexOf(i);
       }
     }
-    smallBlindSeatNumber = (dealerSeatNumber + 1) % players.size();
-    bigBlindSeatNumber = (dealerSeatNumber + 2) % players.size();
+    smallBlindSeatNumber = (dealerSeatNumber + 1) % activePlayers.size();
+    bigBlindSeatNumber = (dealerSeatNumber + 2) % activePlayers.size();
     
-    smallBlindPlayer = players.get(smallBlindSeatNumber);
-    bigBlindPlayer = players.get(bigBlindSeatNumber);
+    smallBlindPlayer = activePlayers.get(smallBlindSeatNumber);
+    bigBlindPlayer = activePlayers.get(bigBlindSeatNumber);
 
     contributePot(smallBlindPlayer, smallBlind);
     contributePot(bigBlindPlayer, bigBlind);
@@ -388,5 +410,76 @@ public class Table {
   
   private void printGameState() {
     //TODO
+  }
+  
+  public Set<String> getActivePlayers() {
+    Set<String> activePlayers = new HashSet<>();
+    for (String playerName : this.table.keySet()) {
+      if (this.table.get(playerName).inPlay()) {
+        activePlayers.add(playerName);
+      }
+    }
+    return activePlayers;
+  }
+  
+  /**
+   * Gets the balances of each player that has ever been in the game, active
+   * or inactive.  
+   * @return a map of player name to their balances 
+   */
+  public Map<String, BigDecimal> getPlayerBalances() {
+    Map<String, BigDecimal> playersToBalances = new HashMap<>();
+    for (String playerName : this.table.keySet()) {
+      playersToBalances.put(playerName, this.table.get(playerName).getBalance());
+    }
+    return playersToBalances;
+  }
+  
+  /**
+   * Gets the name of the current dealer
+   * @return dealer username
+   */
+  public String getDealerName() {
+    return this.dealer.getName();
+  }
+  
+  /**
+   * Gets the name of the current big blind
+   * @return big blind username
+   */
+  public String getBigBlindName() {
+    return this.bigBlindPlayer.getName();
+  }
+  
+  /**
+   * Gets the name of the current small blind
+   * @return small blind username
+   */
+  public String getSmallBlindName() {
+    return this.smallBlindPlayer.getName();
+  }
+  
+  /**
+   * Gets the value of the big blind for the game
+   * @return big blind amount
+   */
+  public BigDecimal getBigBlind() {
+    return this.bigBlind;
+  }
+  
+  /**
+   * Gets the value of the small blind for the game
+   * @return small blind
+   */
+  public BigDecimal getSmallBlind() {
+    return this.smallBlind;
+  }
+  
+  /**
+   * Gets the value of the pot for the game
+   * @return the value of the pot
+   */
+  public BigDecimal getPotSize() {
+    return this.potSize;
   }
 }
