@@ -8,9 +8,11 @@ import java.util.concurrent.BlockingQueue;
 
 import com.corundumstudio.socketio.SocketIOServer;
 
+import edu.sigmachi.poker.Messages.AddPlayerMoneyMsg;
 import edu.sigmachi.poker.Messages.AfterRoundMsg;
 import edu.sigmachi.poker.Messages.ConnectionMsg;
 import edu.sigmachi.poker.Messages.DisconnectConnectMsg;
+import edu.sigmachi.poker.Messages.DisconnectionMsg;
 import edu.sigmachi.poker.Messages.InstantGameMsg;
 import edu.sigmachi.poker.Messages.StartMsg;
 
@@ -25,49 +27,69 @@ public class Game {
   // TODO probably want to set blinds as parameter to start message.
   private BigDecimal bigBlindValue = new BigDecimal("20.00");
   private BigDecimal smallBlindValue = new BigDecimal("10.00");
-  
-  public Game(SocketIOServer server, String gamePassword, Queue<DisconnectConnectMsg> connectionMsgQueue, 
+
+  public Game(SocketIOServer server, String gamePassword, Queue<DisconnectConnectMsg> connectionMsgQueue,
       Queue<AfterRoundMsg> afterRoundMsgQueue, BlockingQueue<InstantGameMsg> instantGameMsgQueue) {
     this.gamePassword = gamePassword;
     this.connectionMsgQueue = connectionMsgQueue;
     this.instantGameMsgQueue = instantGameMsgQueue;
     this.afterRoundMsgQueue = afterRoundMsgQueue;
-    
+
   }
-  
-  private void processConnectionMsg(DisconnectConnectMsg msg) {
+
+  private void processConnectionMsg(DisconnectConnectMsg msg, Table gameTable) {
     if (msg instanceof ConnectionMsg) {
       ConnectionMsg connectMsg = (ConnectionMsg) msg;
       String playerName = connectMsg.getPlayerName();
-      if (allPlayersEver.contains(playerName)) {
-        // This is a reconnection, so we should give them the balance they had before
-      }
-      else {
-        // New player that has yet to connect during this game.
-        allPlayersEver.add(playerName);
-      }
+      gameTable.addPlayer(connectMsg.getPlayerName(), connectMsg.getSessionID());
+    } else {
+      DisconnectionMsg disconnectMsg = (DisconnectionMsg) msg;
+      gameTable.removePlayer(disconnectMsg.getSessionID());
     }
   }
   
+  private void processAfterRoundMsg(AfterRoundMsg msg, Table gameTable) {
+    if (msg instanceof AddPlayerMoneyMsg) {
+      AddPlayerMoneyMsg moneyMsg = (AddPlayerMoneyMsg) msg;
+      gameTable.modifyPlayerBalance(moneyMsg.getPlayerName(), moneyMsg.getDollarAmount());
+    }
+  }
+
   public void start() throws InterruptedException {
-    // This is the loading lobby, just wait until people join
-    Table gameTable = new Table(this.smallBlindValue, this.bigBlindValue, this.instantGameMsgQueue);
+    // TODO eventually this should be an argument when initializing from console 
+    BigDecimal initialBuyIn = new BigDecimal("10.00");
+    Table gameTable = new Table(this.smallBlindValue, this.bigBlindValue, 
+        this.instantGameMsgQueue, initialBuyIn);
+    //This is the loading lobby, just wait until people join
     while (true) {
       if (!(this.instantGameMsgQueue.take() instanceof StartMsg)) {
         System.out.println("You Must Start The Game First!");
       }
-      // TODO investigate thread safety of this, I'm not convinced
-      if (!connectionMsgQueue.isEmpty()) {
-        while (!connectionMsgQueue.isEmpty()) {
-          DisconnectConnectMsg msg = connectionMsgQueue.poll();
-          processConnectionMsg(msg);
-        }
+      //process 
+      while (!connectionMsgQueue.isEmpty()) {
+        DisconnectConnectMsg msg = connectionMsgQueue.poll();
+        assert msg != null;
+        processConnectionMsg(msg, gameTable);
       }
       
+      if (this.instantGameMsgQueue.take() instanceof StartMsg) {
+        System.out.println("STARTING GAME");
+        break;
+      }
     }
-    System.out.println("STARTING GAME");
+    // Left the loading lobby, now into the game loop
     while (true) {
-     
+      while (!connectionMsgQueue.isEmpty()) {
+        DisconnectConnectMsg msg = connectionMsgQueue.poll();
+        assert msg != null;
+        processConnectionMsg(msg, gameTable);
+      }
+      while (!afterRoundMsgQueue.isEmpty()) {
+        AfterRoundMsg msg = afterRoundMsgQueue.poll();
+        assert msg != null;
+        processAfterRoundMsg(msg, gameTable);
+      }
+      gameTable.playHand();
     }
   }
 }
