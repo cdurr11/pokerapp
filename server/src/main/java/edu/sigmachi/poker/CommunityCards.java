@@ -1,59 +1,67 @@
 package edu.sigmachi.poker;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CommunityCards {
-    private ArrayList<Card> actionCards;
-    private Deck deck;
-
+    private List<Card> commiunityCards = new ArrayList<>();
+    private CommunityCardState state = CommunityCardState.PREFLOP; 
     
-    
-    public void draw() {
-        if(actionCards.size() == 0) {
-            drawFlop();
-        }
-        else if(actionCards.size() == 3) {
-            drawTurn();
-        }
-        else {
-            drawRiver();
-        }
+    public void draw(Deck deck) {
+      switch(commiunityCards.size()) {
+        case 0:
+          drawFlop(deck);
+          state = CommunityCardState.FLOP;
+          break;
+        case 3:
+          drawCard(deck);
+          state = CommunityCardState.TURN;
+          break;
+        case 4:
+          drawCard(deck);
+          state = CommunityCardState.RIVER;
+          break;
+        default:
+          throw new RuntimeException("Invalid amount of community cards");
+      }
     }
     
-    public void drawFlop(){
-    	actionCards.add(deck.drawCard());
-    	actionCards.add(deck.drawCard());
-    	actionCards.add(deck.drawCard());
-
+    private void drawFlop(Deck deck){
+    	commiunityCards.add(deck.drawCard());
+    	commiunityCards.add(deck.drawCard());
+    	commiunityCards.add(deck.drawCard());
+    	checkRep();
     }
     
-    public void drawTurn(){
-    	actionCards.add(deck.drawCard());
-
-    }
-    
-    public void drawRiver(){
-    	actionCards.add(deck.drawCard());
-
+    private void drawCard(Deck deck){
+    	commiunityCards.add(deck.drawCard());
+    	checkRep();
     }
 
+    public List<Card> getCurrentCommunityCards(){
+      List<Card> communityCardsCopy = new ArrayList<Card>(this.commiunityCards); 
+      return communityCardsCopy;
+    }
     
-
-    public ArrayList<Card> getCurrentCommunityCards(){
-        return actionCards;
+    public CommunityCardState getState() {
+      return this.state;
     }
     
     @Override
     public String toString() {
-        ArrayList<Card> getCurrentCommunityCards = getCurrentCommunityCards();
-        String showFlop = "";
-        for(int x = 0; x < getCurrentCommunityCards.size(); x++) {
-            Card currentCard = actionCards.get(x);
-            showFlop += currentCard.toString() + " ";
-        }
-        return showFlop;
+      List<Card> getCurrentCommunityCards = getCurrentCommunityCards();
+      String showFlop = "";
+      for(int x = 0; x < getCurrentCommunityCards.size(); x++) {
+          Card currentCard = commiunityCards.get(x);
+          showFlop += currentCard.toString() + " ";
+      }
+      return showFlop;
     }
     
+    private void checkRep() {
+      assert commiunityCards.size() == 0 || commiunityCards.size() == 3 
+          || commiunityCards.size() == 4 || commiunityCards.size() == 5;
+    }
     
 }
 

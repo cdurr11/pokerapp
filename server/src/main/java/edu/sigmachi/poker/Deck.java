@@ -1,34 +1,23 @@
 package edu.sigmachi.poker;
 
-
 import java.util.ArrayList;
-import java.util.*; 
-
+import java.util.Collections;
+import java.util.List; 
 
 public class Deck {
-    private ArrayList<Card> deck;
+  private List<Card> deck;
 
-
-    public Deck() {
-        
- 
-        
+  public Deck() {
     deck = new ArrayList<Card>();
-    
-    for(int x = 1; x <= 13; x++) {
-        for(int y = 1; y <= 4; y++) {
-            deck.add(new Card(x, y));
-        }
+    for (CardSuit suit : CardSuit.values()) {
+      for (CardRank rank : CardRank.values()) {
+        deck.add(new Card(suit, rank));
+      }
     }
-
     Collections.shuffle(deck);
-    
-    }
+  }
 
-    public Card drawCard() {
-        return deck.remove(0);
-        
-    }
-    
-    
+  public Card drawCard() {
+      return deck.remove(deck.size() - 1);  
+  }   
 }

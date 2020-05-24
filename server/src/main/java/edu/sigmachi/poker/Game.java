@@ -27,6 +27,8 @@ public class Game {
   // TODO probably want to set blinds as parameter to start message.
   private BigDecimal bigBlindValue = new BigDecimal("20.00");
   private BigDecimal smallBlindValue = new BigDecimal("10.00");
+  
+  SocketIOServer server;
 
   public Game(SocketIOServer server, String gamePassword, Queue<DisconnectConnectMsg> connectionMsgQueue,
       Queue<AfterRoundMsg> afterRoundMsgQueue, BlockingQueue<InstantGameMsg> instantGameMsgQueue) {
@@ -34,7 +36,7 @@ public class Game {
     this.connectionMsgQueue = connectionMsgQueue;
     this.instantGameMsgQueue = instantGameMsgQueue;
     this.afterRoundMsgQueue = afterRoundMsgQueue;
-
+    this.server = server;
   }
 
   private void processConnectionMsg(DisconnectConnectMsg msg, Table gameTable) {
@@ -58,7 +60,7 @@ public class Game {
   public void start() throws InterruptedException {
     // TODO eventually this should be an argument when initializing from console 
     BigDecimal initialBuyIn = new BigDecimal("10.00");
-    Table gameTable = new Table(this.smallBlindValue, this.bigBlindValue, 
+    Table gameTable = new Table(this.server, this.smallBlindValue, this.bigBlindValue, 
         this.instantGameMsgQueue, initialBuyIn);
     //This is the loading lobby, just wait until people join
     while (true) {
@@ -73,8 +75,13 @@ public class Game {
       }
       
       if (this.instantGameMsgQueue.take() instanceof StartMsg) {
-        System.out.println("STARTING GAME");
-        break;
+        if (gameTable.getActivePlayers().size() >= 5) {
+          System.out.println("STARTING GAME");
+          break;
+        }
+        else {
+          System.out.println("NEED 5 PLAYERS");
+        }
       }
     }
     // Left the loading lobby, now into the game loop

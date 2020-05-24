@@ -5,7 +5,7 @@ import java.math.RoundingMode;
 
 public class ClientActionMsg implements InstantGameMsg {
   
-  public enum Actions {CALL, CHECK, FOLD, RAISE, BET, ALLIN};
+  public enum Actions {CALL, CHECK, FOLD, RAISE, ALLIN};
   
   private String playerName;
   private String action;

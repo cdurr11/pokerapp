@@ -1,7 +1,10 @@
 package edu.sigmachi.poker;
 
+import java.awt.Desktop.Action;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -10,100 +13,86 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 
+import com.corundumstudio.socketio.SocketIOServer;
+
 import edu.sigmachi.poker.Messages.ClientActionMsg;
 import edu.sigmachi.poker.Messages.ClientActionMsg.Actions;
 import edu.sigmachi.poker.Messages.EndMsg;
 import edu.sigmachi.poker.Messages.InstantGameMsg;
 import edu.sigmachi.poker.Messages.PrintGameStateMsg;
 import edu.sigmachi.poker.Messages.RestartMsg;
+import edu.sigmachi.poker.handEvaluator.SevenEval;
 
 /**
  * No Limit Texas Hold'em
  * 
  * This class is the game flow of a single poker table
  * 
- * @author markheatzig
+ * @author codydurr
  *
  */
 
 public class Table {
+  private final SocketIOServer server;
   
-  private static Integer cardsNumAtPreflop = 0;
-  private static Integer cardsNumAtFlop = 3;
-  private static Integer cardsNumAtTurn = 4;
-  private static Integer cardsNumAtRiver = 5;
-  
-  // this map is going to come in to play with everything already filled out
-  private final Map<String, Player> table; // This is the players map --> mapping a player name to a player object.
-                                           // which contains the chip count, hand, inPlay boolean for that player
-
-  /** The deck of cards. */
+  private final Map<String, Player> table = new HashMap<String, Player>(); 
   private Deck deck;
-  
   private BigDecimal initialBuyIn;
-
-  /** This consists of the cards on the table: Flop, Turn, and the River. */
-  private CommunityCards actionCards;
-
-  /** This will keep track of the current pot size. */
+  private CommunityCards communityCards;
   private BigDecimal potSize;
-
-  /* this will keep a definitive ordering of all of the players in the game */
-  private final List<Player> activePlayers;
-
-  /** This will keep track of which players are in the hand. */
-  private final List<Player> currentPlayersInHand;
-
-  /** This is the little blind */
-  private final BigDecimal smallBlind;
-
-  /** This is the big blind */
-  private final BigDecimal bigBlind;
-
-  /** This will keep track of the current dealer */
-  private Player dealer;
+  private BigDecimal currentBet;
   
-  /** This will keep track of the current smallBlindPlayer */
+  private final List<Player> activePlayers = new ArrayList<Player>();
+  private List<Player> currentPlayersInHand = new ArrayList<>();
+  
+  private final BigDecimal smallBlindAmt;
+  private final BigDecimal bigBlindAmt;
+  
+  private Player dealerPlayer;
+  private int dealerIndex;
   private Player smallBlindPlayer;
-
-  /** This will keep track of the current bigBlindPlayer */
+  private int smallBlindIndex;
   private Player bigBlindPlayer;
-
-
-  /** This will keep track of the dealer's position */
-  private Integer dealerPosition;
-
-  /** Message queue */
-  private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
-
-  /**
-   * Current player
-   */
-  private Player currentPlayer;
+  private int bigBlindIndex;
   
-  /**
-   * The player who made the last action after the river
-   */
+  private Integer dealerPosition;
+  private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
+  private Player currentPlayer;
+  private int currentPlayerIndex;
+  //The player who made the last action after the river 
   private Player lastPlayerToAct;
   
-  public Table(BigDecimal smallBlind, BigDecimal bigBlind, 
+  
+  public Table(SocketIOServer server, BigDecimal smallBlind, BigDecimal bigBlind, 
       BlockingQueue<InstantGameMsg> instantGameMsgQueue, BigDecimal initialBuyIn) {
-    this.deck = new Deck();
-    this.activePlayers = new ArrayList<Player>();
-    this.currentPlayersInHand = new ArrayList<Player>();
-
-    this.smallBlind = smallBlind;
-    this.bigBlind = bigBlind;
-    this.table = new HashMap<String, Player>();
+    this.server = server;
+    
+    this.smallBlindAmt = smallBlind;
+    this.bigBlindAmt = bigBlind;
+    
     this.potSize = new BigDecimal(0);
-    this.actionCards = new CommunityCards();
-    this.dealer = activePlayers.get(0);
-    this.smallBlindPlayer = activePlayers.get(1);
-    this.bigBlindPlayer = activePlayers.get(2);
+    this.potSize = this.potSize.setScale(2);
 
     this.instantGameMsgQueue = instantGameMsgQueue;
     this.initialBuyIn = initialBuyIn;
   }
+  
+  private void setDealerAndBlinds() {
+    if (this.dealerIndex == 0 && this.smallBlindIndex == 0 && 
+        this.bigBlindIndex == 0) {
+      this.dealerIndex = 0;
+      this.smallBlindIndex = 1;
+      this.bigBlindIndex = 2;
+      this.dealerPlayer = activePlayers.get(dealerIndex);
+      this.smallBlindPlayer = activePlayers.get(smallBlindIndex);
+      this.bigBlindPlayer = activePlayers.get(bigBlindIndex);
+    } else {
+      this.dealerPlayer = activePlayers.get((dealerIndex + 1) % activePlayers.size());
+      this.smallBlindPlayer = activePlayers.get((smallBlindIndex + 1) % activePlayers.size());
+      this.bigBlindPlayer = activePlayers.get((bigBlindIndex + 1) % activePlayers.size());
+    }
+  }
+  
   /*
    * This will add a player to the game.
    */
@@ -142,120 +131,69 @@ public class Table {
     }
     return false;
   }
-
-  /**
-   * 
-   * Function to play one hand.
-   * 
-   * private void playHand()
-   * 
-   * --- assuming theres more than 2 people playing set dealer set little blind
-   * set big blind. Preflop: This will be a function created that will go through
-   * all active players and have them act appropriately if raise, then everyone
-   * must act again even if acted This start with the player left of the big
-   * blinds Flop: Contains active players draws 3 cards from the deck and displays
-   * on the screen. Round of betting then occurs. Starts with player left of the
-   * dealer. Turn: Contains active players draws 1 card and displays on the screen
-   * Round of betting occurs again. Starts with the player left of the dealer
-   * River Contains active players draws 1 card and displays on the screen Round
-   * of betting occurs again. Starts with the player left of the dealer
-   * 
-   * @throws InterruptedException
-   * 
-   */
-
   
   public RoundOfBettingRetCode playHand() throws InterruptedException {
-    // @MARK: set the current player here, whoever it is, person left of dealer?
-    freshHand();
+    initHand();
+    setDealerAndBlinds();
     postBlinds();
+    boolean firstRound = true;
+//    server.getBroadcastOperations().sendEvent("startOfRound", SORMsg);
     while (currentPlayersInHand.size() > 1) {
-      RoundOfBettingRetCode roundOfBettingResult = roundOfBetting();
+      RoundOfBettingRetCode roundOfBettingResult = roundOfBetting(firstRound);
+      communityCards.draw(this.deck);
       // Need to propagate this to the Game class so that game can be restarted
       if (roundOfBettingResult != RoundOfBettingRetCode.NORMAL) {
         return roundOfBettingResult;
       }
-      if (actionCards.getCurrentCommunityCards().size() == cardsNumAtRiver) {
-        showDown();
+      if (currentPlayersInHand.size() == 1) {
+        //declare winner
+        break;
       }
-      showDown();
+      if (communityCards.getState() == CommunityCardState.RIVER) {
+        showDown();
+        break;
+      }
+      firstRound = false;
     }
     return RoundOfBettingRetCode.NORMAL;
   }
 
 
   /**
-   * 
    * Function to reset everything before the next hand starts. Need to iterate who
    * the dealer is shuffle the deck pass out hands to each player 
    */
-  private void freshHand() {
-    actionCards = new CommunityCards();
-    deck = new Deck();
-    dealCards();
-  }
-
-  private void dealCards() {
-    for (Player player : currentPlayersInHand) {
-      player.drawHand();
+  private void initHand() {
+    this.deck = new Deck();
+    communityCards = new CommunityCards();
+    for (Player player : this.activePlayers) {
+      player.drawHand(this.deck);
     }
   }
 
-  /**
-   * This is going to evaluate all of the hands and allocate the money to the winner
-   * 
-   * 
-   * On the last round after the river:
-   * 
-   * The last player that made an aggressive action (bet or raise) must show first. 
-   * If no aggressive action occurred on the final betting round,
-   * it would be the last aggressive action from the round of betting before that, and so on.
-   * 
-   * 
-   * Otherwise, the person to the left of the dealer shows first...
-   * 
-   * 
-   */
-  private void showDown() {
-	  int temporary = currentPlayersInHand.indexOf(lastPlayerToAct);
-	  int nextTemp = -1;
-	  int x = 1;
-	  Player tempWinner = null;
-	  while (x < currentPlayersInHand.size()) {
-		  temporary = temporary % currentPlayersInHand.size();
-		  nextTemp = (temporary + 1) %currentPlayersInHand.size();
-		  tempWinner = evaluateHand(currentPlayersInHand.get(temporary), currentPlayersInHand.get(nextTemp));
-		  if (tempWinner.equals(null)) {
-			  x++;
-		  }
-		  else if (tempWinner.equals(currentPlayersInHand.get(temporary))){
-				  currentPlayersInHand.remove(currentPlayersInHand.get(nextTemp));
-			  }
-		  else {
-			  currentPlayersInHand.remove(currentPlayersInHand.get(temporary));
-		  }
+
+  private List<Player> showDown() {
+    Map<Player, Integer> playerToHandHash = new HashMap<>();
+    List<Card> commCard = this.communityCards.getCurrentCommunityCards();
+    List<Player> winners = new ArrayList<>();
+	  for (Player player : this.currentPlayersInHand) {
+	    try {
+        int hash = SevenEval.GetRank(player.getCard1().getValue(), player.getCard2().getValue(), 
+            commCard.get(0).getValue(), commCard.get(1).getValue(),
+            commCard.get(2).getValue(), commCard.get(3).getValue(), 
+            commCard.get(4).getValue());
+        playerToHandHash.put(player, hash);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
 	  }
-  }
-
-  
-  /**
-   * @param player this will be one player
-   * @param player2 another
-   * @return the player whose hand is better
-   */
-  private Player evaluateHand(Player player, Player player2) {
-	// TODO Auto-generated method stub
-	  
-	  
-	  // return null ifa tie 
-	return null;
-}
-
-/**
-   * This is going to just reset the board and get ready for the next hand
-   */
-  private void resetBoard() {
-    // TODO Auto-generated method stub
+	  int maxHash = Collections.max(playerToHandHash.values());
+	  for (Player player2 : playerToHandHash.keySet()) {
+	    if (playerToHandHash.get(player2) == maxHash) {
+	      winners.add(player2);
+	    }
+	  }
+	  return winners;
   }
   
   /**
@@ -264,21 +202,28 @@ public class Table {
    * 
    * @throws InterruptedException
    */
-  private RoundOfBettingRetCode roundOfBetting() throws InterruptedException {
-    // server.getBroadcastOperations().sendEvent("startOfRound", new
-    // StartOfRoundMsg);
-	  
-    BigDecimal currentBet = BigDecimal.ZERO; // this is only for the start of preflop
-    int toAct = currentPlayersInHand.size();
-    if (actionCards.getCurrentCommunityCards().size() == cardsNumAtPreflop) {
-      currentBet = bigBlind;
+  private RoundOfBettingRetCode roundOfBetting(boolean firstRound) throws InterruptedException {
+    int toAct;
+	  if (firstRound) {
+	    this.currentPlayer = activePlayers.get((this.bigBlindIndex + 1) % activePlayers.size());
+	    toAct = currentPlayersInHand.size() - 1; // -2 for blinds but + 1 bc big blind can reraise = -1
+	  }
+	  else {
+	    this.currentPlayer = findNextPlayerToStart();
+	    toAct = currentPlayersInHand.size();
+	  }
+    
+    if (communityCards.getState() == CommunityCardState.PREFLOP) {
+      this.currentBet = this.bigBlindAmt;
     }
 
     if (toAct == 0) {
       return RoundOfBettingRetCode.NORMAL;
     }
-
+    
     while (toAct > 0) {
+      Set<Actions> availableActions = getAvailableActions(this.currentPlayer);
+      // TODO send ServerActionResponseMsg here
       InstantGameMsg instantGameMsg;
       while (true) {
         //take messages until we don't get a PrintGameStateMsg
@@ -304,20 +249,23 @@ public class Table {
       }
       ClientActionMsg clientMsg = (ClientActionMsg) instantGameMsg;
       
-      List<Actions> availableActions = getAvailableAction(currentPlayer, currentBet);
-      
       if (clientMsg.getAction() == Actions.FOLD) {
-        currentPlayersInHand.remove(currentPlayersInHand.indexOf(currentPlayer));
+        checkIsValidAction(Actions.FOLD, availableActions);
+        this.currentPlayer.fold();
+        this.currentPlayersInHand.remove(this.currentPlayer);
       }
       else if (clientMsg.getAction() == Actions.CHECK) {
+        checkIsValidAction(Actions.CHECK, availableActions);
         toAct--;
         continue;
       } 
       else if (clientMsg.getAction() == Actions.CALL) {
         // need to keep in mind if its main pot or side pot etc
+        checkIsValidAction(Actions.CALL, availableActions);
         contributePot(currentPlayer, currentBet);
       } 
       else if (clientMsg.getAction() == Actions.RAISE) {
+        checkIsValidAction(Actions.RAISE, availableActions);
         toAct = currentPlayersInHand.size();
         currentBet = currentBet.add(clientMsg.getRaiseAmount());
 
@@ -326,42 +274,58 @@ public class Table {
         lastPlayerToAct = currentPlayer;
       } 
       else if (clientMsg.getAction() == Actions.ALLIN) {
-        toAct = currentPlayersInHand.size();
+        checkIsValidAction(Actions.ALLIN, availableActions);
+        toAct = currentPlayersInHand.size() - 1;
 
         // need to keep in mind if its main pot or side pot etc -- when an all in is made, that is when the side pot is created****
         contributePot(currentPlayer, currentPlayer.getBalance());
         lastPlayerToAct = currentPlayer;
       }
       toAct--;
-      // @MARK : Increment the current player here or somewhere
+      incrementCurrentPlayer();
     }
-    
     return RoundOfBettingRetCode.NORMAL;
   }
 
+  private void incrementCurrentPlayer() {
+    currentPlayerIndex = (currentPlayerIndex + 1) % currentPlayersInHand.size();
+    currentPlayer = currentPlayersInHand.get(currentPlayerIndex);
+  }
+  
+  private void checkIsValidAction(Actions action, Set<Actions> availableActions) {
+    assert availableActions.contains(action);
+  }
+  /**
+   * Finds the next player to the left of the smallBlind for the hand
+   * @return a player that is the closest to the smallBlind that is still
+   * in the hand, this being the smallBlind if they are still in
+   */
+  private Player findNextPlayerToStart() {
+    for (int i = 0; i < activePlayers.size(); i++) {
+      Player curPlayer = activePlayers.get((i + smallBlindIndex) % activePlayers.size());
+      if (curPlayer.getHandStatus()) {
+        return curPlayer;
+      }
+    }
+    throw new RuntimeException("Did not find a valid start player");
+  }
+  
   /**
    * This will get the available action for a player
    * 
    * @return
    */
-  private List<Actions> getAvailableAction(Player player, BigDecimal currentBet) {
-    List<Actions> available = new ArrayList<>();
+  private Set<Actions> getAvailableActions(Player player) {
+    Set<Actions> available = new HashSet<>();
     
+    //TODO need to add a check to check if a player has enough money to raise.
     available.add(Actions.FOLD);
-    if (currentBet.compareTo(BigDecimal.ZERO) == 0) {
+    if (this.currentBet.compareTo(BigDecimal.ZERO) == 0) {
       available.add(Actions.CHECK);
-      available.add(Actions.BET);
+      available.add(Actions.RAISE);
       available.add(Actions.ALLIN);
-
-      // CODY : This is saying if currentBet is less than chip count, I think you have it backwards
     } 
-    else if (currentBet.compareTo(bigBlind) == 0 && currentPlayer.equals(bigBlind)) {
-        available.add(Actions.CHECK);
-        available.add(Actions.BET);   
-        available.add(Actions.ALLIN);
-
-        }
-    else if (currentBet.compareTo(player.getBalance()) == 1) {
+    else if (this.currentBet.compareTo(player.getBalance()) == 1) {
       available.add(Actions.ALLIN);
     } 
     else {
@@ -373,9 +337,9 @@ public class Table {
   }
 
   private void contributePot(Player player, BigDecimal amount) {
-    player.adjustStackSize(amount);
+    player.adjustBalance(amount.negate());
     potSize.add(amount);
-  }
+  }                 
   
   public void modifyPlayerBalance(String playerName, BigDecimal addition) {
     // TODO
@@ -385,26 +349,8 @@ public class Table {
    * posting the blinds for the little and the big blind
    */
   private void postBlinds() {
-    // find the dealer, get the next two active players, first one is going to be
-    // small blind, second will be the big blind
-    int dealerSeatNumber = -1;
-    int smallBlindSeatNumber = -1;
-    int bigBlindSeatNumber = -1;
-
-
-    for (Player i : activePlayers) {
-      if (i.equals(dealer)) {
-        dealerSeatNumber = activePlayers.indexOf(i);
-      }
-    }
-    smallBlindSeatNumber = (dealerSeatNumber + 1) % activePlayers.size();
-    bigBlindSeatNumber = (dealerSeatNumber + 2) % activePlayers.size();
-    
-    smallBlindPlayer = activePlayers.get(smallBlindSeatNumber);
-    bigBlindPlayer = activePlayers.get(bigBlindSeatNumber);
-
-    contributePot(smallBlindPlayer, smallBlind);
-    contributePot(bigBlindPlayer, bigBlind);
+    contributePot(this.smallBlindPlayer, this.smallBlindAmt);
+    contributePot(this.bigBlindPlayer, this.bigBlindAmt);
   }
   
   
@@ -440,7 +386,7 @@ public class Table {
    * @return dealer username
    */
   public String getDealerName() {
-    return this.dealer.getName();
+    return this.dealerPlayer.getName();
   }
   
   /**
@@ -464,7 +410,7 @@ public class Table {
    * @return big blind amount
    */
   public BigDecimal getBigBlind() {
-    return this.bigBlind;
+    return this.bigBlindAmt;
   }
   
   /**
@@ -472,7 +418,7 @@ public class Table {
    * @return small blind
    */
   public BigDecimal getSmallBlind() {
-    return this.smallBlind;
+    return this.smallBlindAmt;
   }
   
   /**
