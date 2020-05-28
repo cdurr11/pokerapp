@@ -11,6 +11,7 @@ public class Player {
   private Card card2;
   private boolean inPlay = true;
   private boolean inHand = true;
+  private boolean allIn = false;
 
   /**
    * 
@@ -51,8 +52,17 @@ public class Player {
     this.inHand = false;
   }
   
-  public void enterHand() {
-    this.inHand = true;
+  public void resetHand() {
+    this.inHand = false;
+    this.allIn = false;
+  }
+  
+  public boolean getAllIn() {
+    return this.allIn;
+  }
+  
+  public void goAllIn() {
+    this.allIn = true;
   }
   
   public boolean getHandStatus() {
@@ -100,6 +110,19 @@ public class Player {
    */
   public String getName() {
       return playerName;
+  }
+  
+  @Override 
+  public boolean equals(Object that) {
+    if (!(that instanceof Player)) {
+      return false;
+    }
+    return this.playerName.equals(((Player) that).getName());
+  }
+  
+  @Override
+  public int hashCode() {
+    return this.playerName.hashCode();
   }
 }
 
