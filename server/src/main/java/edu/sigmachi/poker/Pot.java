@@ -2,59 +2,89 @@ package edu.sigmachi.poker;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Pot {
   public enum PotType {MAIN, SIDE};
-  private BigDecimal potAmount;
-  private List<Player> involvedPlayers;
+  private BigDecimal potAmount = new BigDecimal("0.00");
   private PotType potType;
-  private BigDecimal currentBet;
+  private BigDecimal currentBet = new BigDecimal("0.00");
+  private Map<Player, BigDecimal> playerToContribution;
   
   public Pot (PotType type) {
     this.potType = type;
-    potAmount = BigDecimal.ZERO;
-    potAmount = potAmount.setScale(2);
-    this.involvedPlayers = new ArrayList<>();
+    potAmount = new BigDecimal("0.00");
+    this.playerToContribution = new HashMap<>();
   }
   
-  public Pot (PotType type, BigDecimal currentBet, BigDecimal currentPotAmount, List<Player> players) {
+  public Pot (PotType type, BigDecimal currentBet, 
+      Map<Player, BigDecimal> playerToContribution) {
     this.potType = type;
-    this.potAmount = currentPotAmount;
     this.currentBet = currentBet;
-    this.involvedPlayers = players;
+    this.playerToContribution = playerToContribution;
+    updatePot();
   }
   
   public BigDecimal getPotAmount() {
     return this.potAmount;
   }
   
-  public void clearInvolvedPlayers() {
-    this.involvedPlayers = new ArrayList<>();
-  }
-  
-  public List<Player> getPlayers() {
-    List<Player> players = new ArrayList<>(this.involvedPlayers);
-    return players;
+  private void updatePot() {
+    BigDecimal pot = BigDecimal.ZERO;
+    pot = pot.setScale(2);
+    for (Player player : this.playerToContribution.keySet()) {
+      pot = pot.add(this.playerToContribution.get(player));
+    }
+    this.potAmount = pot;
   }
   
   public void contributePot(Player player, BigDecimal amount) {
-    this.potAmount = this.potAmount.add(amount);
-    player.adjustBalance(amount.negate());
-    if (involvedPlayers.contains(player)) {
-      involvedPlayers.add(player);
+    // If we're raising set the new bet
+    if (amount.compareTo(this.currentBet) == 1) {
+      this.currentBet = amount;
     }
+    this.playerToContribution.put(player, this.currentBet);
+    updatePot();
   }
   
-  public void setCurrentPotBet(BigDecimal currentBet) {
-    this.currentBet = currentBet;
+  public Pot splitPot(BigDecimal value) {
+    Map<Player, BigDecimal> newPotMap = new HashMap<>();
+    this.currentBet = value;
+    BigDecimal newBet = new BigDecimal("0.00");
+    for (Player player : this.playerToContribution.keySet()) {
+      if (this.playerToContribution.get(player).compareTo(value) == 1) {
+        BigDecimal difference = this.playerToContribution.get(player).subtract(value);
+        this.playerToContribution.put(player, value);
+        newPotMap.put(player, difference);
+        if (difference.compareTo(newBet) == 1) {
+          newBet = difference;
+        }
+      }
+    }
+    return new Pot(PotType.MAIN, newBet, newPotMap);
+    
+    
+  }
+  
+  public void setCurrentPot(BigDecimal currentPot) {
+    this.potAmount = currentPot;
   }
   
   public BigDecimal getCurrentBet() {
     return this.currentBet;
   }
   
+  public void setCurrentBet(BigDecimal currentBet) {
+    this.currentBet = currentBet;
+  }
   
+  public boolean playerInPot(Player player) {
+    return this.playerToContribution.containsKey(player);
+  }
   
-  
+  public BigDecimal getPlayerContribution(Player player) {
+    return this.playerToContribution.get(player);
+  }
 }
