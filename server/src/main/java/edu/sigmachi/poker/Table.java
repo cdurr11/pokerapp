@@ -1,12 +1,12 @@
 package edu.sigmachi.poker;
 
-import java.awt.Desktop.Action;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,8 +39,9 @@ public class Table {
   private Deck deck;
   private BigDecimal initialBuyIn;
   private CommunityCards communityCards;
-  private BigDecimal potSize;
+ 
   private BigDecimal currentBet;
+  private List<Pot> pots = new LinkedList<>();
   
   private final List<Player> activePlayers = new ArrayList<Player>();
   private List<Player> currentPlayersInHand = new ArrayList<>();
@@ -55,13 +56,11 @@ public class Table {
   private Player bigBlindPlayer;
   private int bigBlindIndex;
   
-  private Integer dealerPosition;
   private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
   private Player currentPlayer;
   private int currentPlayerIndex;
-  //The player who made the last action after the river 
-  private Player lastPlayerToAct;
   
+  //The player who made the last action after the river 
   
   public Table(SocketIOServer server, BigDecimal smallBlind, BigDecimal bigBlind, 
       BlockingQueue<InstantGameMsg> instantGameMsgQueue, BigDecimal initialBuyIn) {
@@ -69,9 +68,6 @@ public class Table {
     
     this.smallBlindAmt = smallBlind;
     this.bigBlindAmt = bigBlind;
-    
-    this.potSize = new BigDecimal(0);
-    this.potSize = this.potSize.setScale(2);
 
     this.instantGameMsgQueue = instantGameMsgQueue;
     this.initialBuyIn = initialBuyIn;
@@ -198,7 +194,7 @@ public class Table {
   
   /**
    * This is going to encompass a round of betting - Take into account current
-   * bet, available actions -
+   * bet, available actions
    * 
    * @throws InterruptedException
    */
@@ -216,13 +212,14 @@ public class Table {
     if (communityCards.getState() == CommunityCardState.PREFLOP) {
       this.currentBet = this.bigBlindAmt;
     }
-
-    if (toAct == 0) {
-      return RoundOfBettingRetCode.NORMAL;
-    }
     
     while (toAct > 0) {
       Set<Actions> availableActions = getAvailableActions(this.currentPlayer);
+      if (currentPlayer.getAllIn()) {
+        toAct--;
+        incrementCurrentPlayer();
+        continue;
+      }
       // TODO send ServerActionResponseMsg here
       InstantGameMsg instantGameMsg;
       while (true) {
@@ -256,30 +253,19 @@ public class Table {
       }
       else if (clientMsg.getAction() == Actions.CHECK) {
         checkIsValidAction(Actions.CHECK, availableActions);
-        toAct--;
-        continue;
       } 
       else if (clientMsg.getAction() == Actions.CALL) {
-        // need to keep in mind if its main pot or side pot etc
-        checkIsValidAction(Actions.CALL, availableActions);
-        contributePot(currentPlayer, currentBet);
-      } 
+        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, BigDecimal.ZERO);
+      }
       else if (clientMsg.getAction() == Actions.RAISE) {
-        checkIsValidAction(Actions.RAISE, availableActions);
-        toAct = currentPlayersInHand.size();
-        currentBet = currentBet.add(clientMsg.getRaiseAmount());
-
-        // need to keep in mind if its main pot or side pot etc
-        contributePot(currentPlayer, currentBet);
-        lastPlayerToAct = currentPlayer;
-      } 
+        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, clientMsg.getRaiseAmount()); 
+        toAct = this.currentPlayersInHand.size();
+      }
       else if (clientMsg.getAction() == Actions.ALLIN) {
-        checkIsValidAction(Actions.ALLIN, availableActions);
-        toAct = currentPlayersInHand.size() - 1;
-
-        // need to keep in mind if its main pot or side pot etc -- when an all in is made, that is when the side pot is created****
-        contributePot(currentPlayer, currentPlayer.getBalance());
-        lastPlayerToAct = currentPlayer;
+        this.currentPlayer.goAllIn();
+        this.currentPlayersInHand.remove(currentPlayer);
+        BigDecimal playerBalance = table.get(clientMsg.getPlayerName()).getBalance();
+        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, playerBalance);
       }
       toAct--;
       incrementCurrentPlayer();
@@ -334,23 +320,15 @@ public class Table {
       available.add(Actions.ALLIN);
     }
     return available;
-  }
-
-  private void contributePot(Player player, BigDecimal amount) {
-    player.adjustBalance(amount.negate());
-    potSize.add(amount);
-  }                 
-  
-  public void modifyPlayerBalance(String playerName, BigDecimal addition) {
-    // TODO
-  }
+  }         
 
   /*
    * posting the blinds for the little and the big blind
    */
   private void postBlinds() {
-    contributePot(this.smallBlindPlayer, this.smallBlindAmt);
-    contributePot(this.bigBlindPlayer, this.bigBlindAmt);
+    Pot mainPot = this.pots.get(0);
+    mainPot.contributePot(this.smallBlindPlayer, this.smallBlindAmt);
+    mainPot.contributePot(this.bigBlindPlayer, this.bigBlindAmt);
   }
   
   
@@ -419,13 +397,5 @@ public class Table {
    */
   public BigDecimal getSmallBlind() {
     return this.smallBlindAmt;
-  }
-  
-  /**
-   * Gets the value of the pot for the game
-   * @return the value of the pot
-   */
-  public BigDecimal getPotSize() {
-    return this.potSize;
   }
 }

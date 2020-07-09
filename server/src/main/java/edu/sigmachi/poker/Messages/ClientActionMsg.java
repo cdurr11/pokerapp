@@ -37,11 +37,7 @@ public class ClientActionMsg implements InstantGameMsg {
     switch (this.action) {
       case "CALL":
         return Actions.CALL;
-      //need to do this
-      case "BET":
-          return Actions.BET;
           
-      //need to do this
       case "ALLIN":
           return Actions.ALLIN;
           
