@@ -53,7 +53,7 @@ public class Game {
   private void processAfterRoundMsg(AfterRoundMsg msg, Table gameTable) {
     if (msg instanceof AddPlayerMoneyMsg) {
       AddPlayerMoneyMsg moneyMsg = (AddPlayerMoneyMsg) msg;
-      gameTable.modifyPlayerBalance(moneyMsg.getPlayerName(), moneyMsg.getDollarAmount());
+      gameTable.adjustPlayerBalance(moneyMsg.getPlayerName(), moneyMsg.getDollarAmount());
     }
   }
 
@@ -62,25 +62,25 @@ public class Game {
     BigDecimal initialBuyIn = new BigDecimal("10.00");
     Table gameTable = new Table(this.server, this.smallBlindValue, this.bigBlindValue, 
         this.instantGameMsgQueue, initialBuyIn);
-    //This is the loading lobby, just wait until people join
+    // This is the loading lobby, just wait until people join
     while (true) {
-      if (!(this.instantGameMsgQueue.take() instanceof StartMsg)) {
-        System.out.println("You Must Start The Game First!");
-      }
-      //process 
+      InstantGameMsg instantGameMsg = this.instantGameMsgQueue.take();
+      // process
       while (!connectionMsgQueue.isEmpty()) {
         DisconnectConnectMsg msg = connectionMsgQueue.poll();
         assert msg != null;
         processConnectionMsg(msg, gameTable);
       }
-      
-      if (this.instantGameMsgQueue.take() instanceof StartMsg) {
+      if (!(instantGameMsg instanceof StartMsg)) {
+        System.out.println("You Must Start The Game First!");
+      }
+      else {
         if (gameTable.getActivePlayers().size() >= 5) {
           System.out.println("STARTING GAME");
           break;
         }
         else {
-          System.out.println("NEED 5 PLAYERS");
+          System.out.println("5 PLAYERS ARE NEEDED TO START THE GAME");
         }
       }
     }

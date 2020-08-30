@@ -35,7 +35,7 @@ import edu.sigmachi.poker.handEvaluator.SevenEval;
 public class Table {
   private final SocketIOServer server;
   
-  private final Map<String, Player> table = new HashMap<String, Player>(); 
+  private final Map<String, Player> table = new HashMap<>();
   private Deck deck;
   private BigDecimal initialBuyIn;
   private CommunityCards communityCards;
@@ -43,7 +43,7 @@ public class Table {
   private BigDecimal currentBet;
   private List<Pot> pots = new LinkedList<>();
   
-  private final List<Player> activePlayers = new ArrayList<Player>();
+  private final List<Player> activePlayers = new ArrayList<>();
   private List<Player> currentPlayersInHand = new ArrayList<>();
   
   private final BigDecimal smallBlindAmt;
@@ -133,6 +133,7 @@ public class Table {
     setDealerAndBlinds();
     postBlinds();
     boolean firstRound = true;
+    List<Player> winners = new ArrayList<>();
 //    server.getBroadcastOperations().sendEvent("startOfRound", SORMsg);
     while (currentPlayersInHand.size() > 1) {
       RoundOfBettingRetCode roundOfBettingResult = roundOfBetting(firstRound);
@@ -143,14 +144,16 @@ public class Table {
       }
       if (currentPlayersInHand.size() == 1) {
         //declare winner
+        winners.add(currentPlayersInHand.get(0));
         break;
       }
       if (communityCards.getState() == CommunityCardState.RIVER) {
-        showDown();
+        winners = showDown();
         break;
       }
       firstRound = false;
     }
+    this.allocateWinnings(winners);
     return RoundOfBettingRetCode.NORMAL;
   }
 
@@ -167,18 +170,17 @@ public class Table {
     }
   }
 
-
   private List<Player> showDown() {
     Map<Player, Integer> playerToHandHash = new HashMap<>();
     List<Card> commCard = this.communityCards.getCurrentCommunityCards();
     List<Player> winners = new ArrayList<>();
 	  for (Player player : this.currentPlayersInHand) {
 	    try {
-        int hash = SevenEval.GetRank(player.getCard1().getValue(), player.getCard2().getValue(), 
-            commCard.get(0).getValue(), commCard.get(1).getValue(),
-            commCard.get(2).getValue(), commCard.get(3).getValue(), 
-            commCard.get(4).getValue());
-        playerToHandHash.put(player, hash);
+          int hash = SevenEval.GetRank(player.getCard1().getValue(), player.getCard2().getValue(),
+              commCard.get(0).getValue(), commCard.get(1).getValue(),
+              commCard.get(2).getValue(), commCard.get(3).getValue(),
+              commCard.get(4).getValue());
+          playerToHandHash.put(player, hash);
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -191,7 +193,29 @@ public class Table {
 	  }
 	  return winners;
   }
-  
+
+  private void allocateWinnings(List<Player> winners) {
+    for (Pot pot: this.pots) {
+      Set<Player> contributors = pot.getPlayersInPot();
+      List<Player> winnersInPot = new ArrayList<>();
+      for (Player winner: winners) {
+        if (contributors.contains(winner)) {
+          winnersInPot.add(winner);
+        }
+      }
+      if (winnersInPot.size() == 0) {
+        for (Player nonWinner: pot.getPlayersInPot()) {
+          nonWinner.adjustBalance(pot.getPlayerContribution(nonWinner));
+        }
+      } else {
+        for (Player winnerInPot: winnersInPot) {
+          BigDecimal bigDecimalPotSize = BigDecimal.valueOf(winnersInPot.size()).setScale(2);
+          winnerInPot.adjustBalance(pot.getPotAmount().divide(bigDecimalPotSize));
+        }
+      }
+    }
+  }
+
   /**
    * This is going to encompass a round of betting - Take into account current
    * bet, available actions
@@ -200,7 +224,9 @@ public class Table {
    */
   private RoundOfBettingRetCode roundOfBetting(boolean firstRound) throws InterruptedException {
     int toAct;
+    boolean canCheck = true;
 	  if (firstRound) {
+	    canCheck = false;
 	    this.currentPlayer = activePlayers.get((this.bigBlindIndex + 1) % activePlayers.size());
 	    toAct = currentPlayersInHand.size() - 1; // -2 for blinds but + 1 bc big blind can reraise = -1
 	  }
@@ -214,7 +240,7 @@ public class Table {
     }
     
     while (toAct > 0) {
-      Set<Actions> availableActions = getAvailableActions(this.currentPlayer);
+      Set<Actions> availableActions = getAvailableActions(this.currentPlayer, canCheck);
       if (currentPlayer.getAllIn()) {
         toAct--;
         incrementCurrentPlayer();
@@ -223,7 +249,7 @@ public class Table {
       // TODO send ServerActionResponseMsg here
       InstantGameMsg instantGameMsg;
       while (true) {
-        //take messages until we don't get a PrintGameStateMsg
+        // take messages until we don't get a PrintGameStateMsg
         instantGameMsg = instantGameMsgQueue.take();
         if (instantGameMsg instanceof RestartMsg) {
           return RoundOfBettingRetCode.RESTART;
@@ -231,12 +257,12 @@ public class Table {
         else if (instantGameMsg instanceof EndMsg) {
           return RoundOfBettingRetCode.END;
         }
-        else if (instantGameMsg instanceof PrintGameStateMsg ) {
+        else if (instantGameMsg instanceof PrintGameStateMsg) {
           printGameState();
         }
         else if (instantGameMsg instanceof ClientActionMsg) {
           // Check to make sure that the message we get is from the right player
-          if (((ClientActionMsg) instantGameMsg).getPlayerName().equals(currentPlayer)) {
+          if (((ClientActionMsg) instantGameMsg).getPlayerName().equals(currentPlayer.getName())) {
             break;
           }
         }
@@ -258,10 +284,12 @@ public class Table {
         BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, BigDecimal.ZERO);
       }
       else if (clientMsg.getAction() == Actions.RAISE) {
+        canCheck = false;
         BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, clientMsg.getRaiseAmount()); 
         toAct = this.currentPlayersInHand.size();
       }
       else if (clientMsg.getAction() == Actions.ALLIN) {
+        canCheck = false;
         this.currentPlayer.goAllIn();
         this.currentPlayersInHand.remove(currentPlayer);
         BigDecimal playerBalance = table.get(clientMsg.getPlayerName()).getBalance();
@@ -277,7 +305,7 @@ public class Table {
     currentPlayerIndex = (currentPlayerIndex + 1) % currentPlayersInHand.size();
     currentPlayer = currentPlayersInHand.get(currentPlayerIndex);
   }
-  
+
   private void checkIsValidAction(Actions action, Set<Actions> availableActions) {
     assert availableActions.contains(action);
   }
@@ -301,21 +329,21 @@ public class Table {
    * 
    * @return
    */
-  private Set<Actions> getAvailableActions(Player player) {
+  private Set<Actions> getAvailableActions(Player player, boolean canCheck) {
     Set<Actions> available = new HashSet<>();
     
-    //TODO need to add a check to check if a player has enough money to raise.
+    // TODO need to add a check to check if a player has enough money to raise.
     available.add(Actions.FOLD);
-    if (this.currentBet.compareTo(BigDecimal.ZERO) == 0) {
+    if (canCheck) {
       available.add(Actions.CHECK);
-      available.add(Actions.RAISE);
-      available.add(Actions.ALLIN);
-    } 
-    else if (this.currentBet.compareTo(player.getBalance()) == 1) {
-      available.add(Actions.ALLIN);
-    } 
-    else {
+    } else {
       available.add(Actions.CALL);
+    }
+
+    if (this.currentBet.compareTo(player.getBalance()) >= 0) {
+      available.add(Actions.ALLIN);
+    }
+    else {
       available.add(Actions.RAISE);
       available.add(Actions.ALLIN);
     }
@@ -330,7 +358,10 @@ public class Table {
     mainPot.contributePot(this.smallBlindPlayer, this.smallBlindAmt);
     mainPot.contributePot(this.bigBlindPlayer, this.bigBlindAmt);
   }
-  
+
+  public void adjustPlayerBalance(String playerName, BigDecimal dollarAmount) {
+    this.table.get(playerName).adjustBalance(dollarAmount);
+  }
   
   private void printGameState() {
     //TODO
