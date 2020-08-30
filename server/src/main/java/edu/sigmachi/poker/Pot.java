@@ -1,10 +1,7 @@
 package edu.sigmachi.poker;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Pot {
   public enum PotType {MAIN, SIDE};
@@ -86,5 +83,9 @@ public class Pot {
   
   public BigDecimal getPlayerContribution(Player player) {
     return this.playerToContribution.get(player);
+  }
+
+  public Set<Player> getPlayersInPot() {
+    return this.playerToContribution.keySet();
   }
 }
