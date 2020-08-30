@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CommunityCards {
-    private List<Card> commiunityCards = new ArrayList<>();
+    private List<Card> communityCards = new ArrayList<>();
     private CommunityCardState state = CommunityCardState.PREFLOP; 
     
     public void draw(Deck deck) {
-      switch(commiunityCards.size()) {
+      switch(communityCards.size()) {
         case 0:
           drawFlop(deck);
           state = CommunityCardState.FLOP;
@@ -24,22 +24,24 @@ public class CommunityCards {
         default:
           throw new RuntimeException("Invalid amount of community cards");
       }
+      checkRep();
     }
     
     private void drawFlop(Deck deck){
-    	commiunityCards.add(deck.drawCard());
-    	commiunityCards.add(deck.drawCard());
-    	commiunityCards.add(deck.drawCard());
+    	communityCards.add(deck.drawCard());
+    	communityCards.add(deck.drawCard());
+    	communityCards.add(deck.drawCard());
     	checkRep();
     }
     
     private void drawCard(Deck deck){
-    	commiunityCards.add(deck.drawCard());
+    	communityCards.add(deck.drawCard());
     	checkRep();
     }
 
     public List<Card> getCurrentCommunityCards(){
-      List<Card> communityCardsCopy = new ArrayList<Card>(this.commiunityCards); 
+      List<Card> communityCardsCopy = new ArrayList<Card>(this.communityCards);
+      checkRep();
       return communityCardsCopy;
     }
     
@@ -51,18 +53,28 @@ public class CommunityCards {
     public String toString() {
       List<Card> getCurrentCommunityCards = getCurrentCommunityCards();
       String showFlop = "";
-      for(int x = 0; x < getCurrentCommunityCards.size(); x++) {
-          Card currentCard = commiunityCards.get(x);
+      for(int i = 0; i < getCurrentCommunityCards.size(); i++) {
+          Card currentCard = communityCards.get(i);
           showFlop += currentCard.toString() + " ";
       }
+      checkRep();
       return showFlop;
     }
     
     private void checkRep() {
-      assert commiunityCards.size() == 0 || commiunityCards.size() == 3 
-          || commiunityCards.size() == 4 || commiunityCards.size() == 5;
+      assert communityCards.size() == 0 || communityCards.size() == 3
+          || communityCards.size() == 4 || communityCards.size() == 5;
+
+      if (this.getState() == CommunityCardState.PREFLOP) {
+        assert this.getCurrentCommunityCards().size() == 0;
+      } else if (this.getState() == CommunityCardState.FLOP) {
+        assert this.getCurrentCommunityCards().size() == 3;
+      } else if (this.getState() == CommunityCardState.TURN) {
+        assert this.getCurrentCommunityCards().size() == 4;
+      } else {
+        assert this.getCurrentCommunityCards().size() == 5;
+      }
     }
-    
 }
 
 
