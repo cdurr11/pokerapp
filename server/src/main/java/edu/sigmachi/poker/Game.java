@@ -5,16 +5,11 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.corundumstudio.socketio.SocketIOServer;
 
-import edu.sigmachi.poker.Messages.AddPlayerMoneyMsg;
-import edu.sigmachi.poker.Messages.AfterRoundMsg;
-import edu.sigmachi.poker.Messages.ConnectionMsg;
-import edu.sigmachi.poker.Messages.DisconnectConnectMsg;
-import edu.sigmachi.poker.Messages.DisconnectionMsg;
-import edu.sigmachi.poker.Messages.InstantGameMsg;
-import edu.sigmachi.poker.Messages.StartMsg;
+import edu.sigmachi.poker.Messages.*;
 
 public class Game {
   private final String gamePassword;
@@ -24,6 +19,7 @@ public class Game {
   private final Queue<DisconnectConnectMsg> connectionMsgQueue;
   private final Queue<AfterRoundMsg> afterRoundMsgQueue;
   private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
+  private final BlockingQueue<GameStateMsg> gameStateMsgQueue;
   // TODO probably want to set blinds as parameter to start message.
   private BigDecimal bigBlindValue = new BigDecimal("20.00");
   private BigDecimal smallBlindValue = new BigDecimal("10.00");
@@ -36,6 +32,7 @@ public class Game {
     this.connectionMsgQueue = connectionMsgQueue;
     this.instantGameMsgQueue = instantGameMsgQueue;
     this.afterRoundMsgQueue = afterRoundMsgQueue;
+    this.gameStateMsgQueue = new LinkedBlockingQueue<>();
     this.server = server;
   }
 
@@ -61,7 +58,7 @@ public class Game {
     // TODO eventually this should be an argument when initializing from console 
     BigDecimal initialBuyIn = new BigDecimal("10.00");
     Table gameTable = new Table(this.server, this.smallBlindValue, this.bigBlindValue, 
-        this.instantGameMsgQueue, initialBuyIn);
+        this.instantGameMsgQueue, this.gameStateMsgQueue, initialBuyIn);
     // This is the loading lobby, just wait until people join
     while (true) {
       InstantGameMsg instantGameMsg = this.instantGameMsgQueue.take();
