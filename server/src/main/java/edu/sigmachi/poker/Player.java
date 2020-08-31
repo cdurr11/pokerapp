@@ -25,6 +25,19 @@ public class Player {
   	this.sessionID = sessionID;
     this.balance = balance;
   }
+
+  private Player(String id, UUID sessionID, BigDecimal balance,
+                 Card card1, Card card2, boolean inPlay, boolean inHand,
+                 boolean allIn) {
+    this.playerName = id;
+    this.sessionID = sessionID;
+    this.balance = balance;
+    this.card1 = card1;
+    this.card2 = card2;
+    this.inPlay = inPlay;
+    this.inHand = inHand;
+    this.allIn = allIn;
+  }
   
   private void checkRep() {
       assert (this.balance.compareTo(BigDecimal.ZERO) >= 0);
@@ -123,6 +136,12 @@ public class Player {
   @Override
   public int hashCode() {
     return this.playerName.hashCode();
+  }
+
+  public Player makeCopy() {
+    return new Player(this.playerName, this.sessionID, this.balance,
+            this.card1, this.card2, this.inPlay, this.inHand,
+            this.allIn);
   }
 }
 
