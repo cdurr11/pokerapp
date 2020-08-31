@@ -12,15 +12,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.stream.Collectors;
 
 import com.corundumstudio.socketio.SocketIOServer;
 
-import edu.sigmachi.poker.Messages.ClientActionMsg;
+import edu.sigmachi.poker.Messages.*;
 import edu.sigmachi.poker.Messages.ClientActionMsg.Actions;
-import edu.sigmachi.poker.Messages.EndMsg;
-import edu.sigmachi.poker.Messages.InstantGameMsg;
-import edu.sigmachi.poker.Messages.PrintGameStateMsg;
-import edu.sigmachi.poker.Messages.RestartMsg;
 import edu.sigmachi.poker.handEvaluator.SevenEval;
 
 /**
@@ -37,7 +34,7 @@ public class Table {
   
   private final Map<String, Player> table = new HashMap<>();
   private Deck deck;
-  private BigDecimal initialBuyIn;
+  private final BigDecimal initialBuyIn;
   private CommunityCards communityCards;
  
   private BigDecimal currentBet;
@@ -57,20 +54,26 @@ public class Table {
   private int bigBlindIndex;
   
   private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
+  private final BlockingQueue<GameStateMsg> gameStateQueue;
+
   private Player currentPlayer;
   private int currentPlayerIndex;
   
   //The player who made the last action after the river 
   
-  public Table(SocketIOServer server, BigDecimal smallBlind, BigDecimal bigBlind, 
-      BlockingQueue<InstantGameMsg> instantGameMsgQueue, BigDecimal initialBuyIn) {
+  public Table(SocketIOServer server, BigDecimal smallBlind, BigDecimal bigBlind,
+               BlockingQueue<InstantGameMsg> instantGameMsgQueue,
+               BlockingQueue<GameStateMsg> gameStateQueue,
+               BigDecimal initialBuyIn) {
+
     this.server = server;
     
     this.smallBlindAmt = smallBlind;
     this.bigBlindAmt = bigBlind;
+    this.initialBuyIn = initialBuyIn;
 
     this.instantGameMsgQueue = instantGameMsgQueue;
-    this.initialBuyIn = initialBuyIn;
+    this.gameStateQueue = gameStateQueue;
   }
   
   private void setDealerAndBlinds() {
@@ -83,9 +86,12 @@ public class Table {
       this.smallBlindPlayer = activePlayers.get(smallBlindIndex);
       this.bigBlindPlayer = activePlayers.get(bigBlindIndex);
     } else {
-      this.dealerPlayer = activePlayers.get((dealerIndex + 1) % activePlayers.size());
-      this.smallBlindPlayer = activePlayers.get((smallBlindIndex + 1) % activePlayers.size());
-      this.bigBlindPlayer = activePlayers.get((bigBlindIndex + 1) % activePlayers.size());
+      dealerIndex = (++dealerIndex) % activePlayers.size();
+      smallBlindIndex = (++smallBlindIndex) % activePlayers.size();
+      bigBlindIndex = (++bigBlindIndex) % activePlayers.size();
+      this.dealerPlayer = activePlayers.get(dealerIndex);
+      this.smallBlindPlayer = activePlayers.get(smallBlindIndex);
+      this.bigBlindPlayer = activePlayers.get(bigBlindIndex);
     }
   }
   
@@ -94,6 +100,7 @@ public class Table {
    */
   public void addPlayer(String playerName, UUID sessionID) {
     // Player is logging in again
+    // TODO need to revisit this
     if (table.keySet().contains(playerName)) {
       table.get(playerName).setInPlay(true);
       table.get(playerName).setSessionID(sessionID);
@@ -137,6 +144,7 @@ public class Table {
 //    server.getBroadcastOperations().sendEvent("startOfRound", SORMsg);
     while (currentPlayersInHand.size() > 1) {
       RoundOfBettingRetCode roundOfBettingResult = roundOfBetting(firstRound);
+      firstRound = false;
       communityCards.draw(this.deck);
       // Need to propagate this to the Game class so that game can be restarted
       if (roundOfBettingResult != RoundOfBettingRetCode.NORMAL) {
@@ -151,7 +159,6 @@ public class Table {
         winners = showDown();
         break;
       }
-      firstRound = false;
     }
     this.allocateWinnings(winners);
     return RoundOfBettingRetCode.NORMAL;
@@ -163,8 +170,12 @@ public class Table {
    * the dealer is shuffle the deck pass out hands to each player 
    */
   private void initHand() {
+    this.currentPlayersInHand = new ArrayList<>(activePlayers);
+    this.pots = new ArrayList<>();
+    this.pots.add(new Pot(Pot.PotType.MAIN));
     this.deck = new Deck();
     communityCards = new CommunityCards();
+    // TODO need to send out player cards at some point
     for (Player player : this.activePlayers) {
       player.drawHand(this.deck);
     }
@@ -227,11 +238,13 @@ public class Table {
     boolean canCheck = true;
 	  if (firstRound) {
 	    canCheck = false;
-	    this.currentPlayer = activePlayers.get((this.bigBlindIndex + 1) % activePlayers.size());
+	    this.currentPlayerIndex = (this.bigBlindIndex + 1) % activePlayers.size();
+	    this.currentPlayer = activePlayers.get(this.currentPlayerIndex);
 	    toAct = currentPlayersInHand.size() - 1; // -2 for blinds but + 1 bc big blind can reraise = -1
 	  }
 	  else {
-	    this.currentPlayer = findNextPlayerToStart();
+	    this.currentPlayerIndex = findNextPlayerIndexToStart();
+	    this.currentPlayer = activePlayers.get(this.currentPlayerIndex);;
 	    toAct = currentPlayersInHand.size();
 	  }
     
@@ -271,7 +284,7 @@ public class Table {
         }
       }
       ClientActionMsg clientMsg = (ClientActionMsg) instantGameMsg;
-      
+
       if (clientMsg.getAction() == Actions.FOLD) {
         checkIsValidAction(Actions.FOLD, availableActions);
         this.currentPlayer.fold();
@@ -297,7 +310,9 @@ public class Table {
       }
       toAct--;
       incrementCurrentPlayer();
+      this.gameStateQueue.put(this.makeGameStateMsg(GameStateMsg.GameStateMsgType.AFTERACTION));
     }
+    this.gameStateQueue.put(this.makeGameStateMsg(GameStateMsg.GameStateMsgType.COMPLETION));
     return RoundOfBettingRetCode.NORMAL;
   }
 
@@ -311,14 +326,14 @@ public class Table {
   }
   /**
    * Finds the next player to the left of the smallBlind for the hand
-   * @return a player that is the closest to the smallBlind that is still
+   * @return the index of the player that is the closest to the smallBlind that is still
    * in the hand, this being the smallBlind if they are still in
    */
-  private Player findNextPlayerToStart() {
+  private int findNextPlayerIndexToStart() {
     for (int i = 0; i < activePlayers.size(); i++) {
       Player curPlayer = activePlayers.get((i + smallBlindIndex) % activePlayers.size());
       if (curPlayer.getHandStatus()) {
-        return curPlayer;
+        return i;
       }
     }
     throw new RuntimeException("Did not find a valid start player");
@@ -376,6 +391,28 @@ public class Table {
     }
     return activePlayers;
   }
+
+  public GameStateMsg makeGameStateMsg(GameStateMsg.GameStateMsgType msgType) {
+    List<Player> activePlayersCopy = this.activePlayers.stream()
+            .map(Player::makeCopy)
+            .collect(Collectors.toList());
+    List<Player> currentPlayersInHandCopy = this.currentPlayersInHand.stream()
+            .map(Player::makeCopy)
+            .collect(Collectors.toList());
+    List<Pot> potsCopy = this.pots.stream()
+            .map(Pot::makeCopy)
+            .collect(Collectors.toList());
+
+    String dealerPlayerName = this.dealerPlayer.getName();
+    String smallBlindPlayerName = this.smallBlindPlayer.getName();
+    String bigBlindPlayerName = this.bigBlindPlayer.getName();
+    String currentPlayerName = this.currentPlayer.getName();
+
+    return new GameStateMsg(activePlayersCopy, currentPlayersInHandCopy, potsCopy,
+            dealerPlayerName, this.dealerIndex, smallBlindPlayerName, this.smallBlindIndex,
+            bigBlindPlayerName, this.bigBlindIndex, currentPlayerName, this.currentPlayerIndex,
+            msgType);
+  }
   
   /**
    * Gets the balances of each player that has ever been in the game, active
@@ -418,7 +455,7 @@ public class Table {
    * Gets the value of the big blind for the game
    * @return big blind amount
    */
-  public BigDecimal getBigBlind() {
+  public BigDecimal getBigBlindAmount() {
     return this.bigBlindAmt;
   }
   
@@ -426,7 +463,7 @@ public class Table {
    * Gets the value of the small blind for the game
    * @return small blind
    */
-  public BigDecimal getSmallBlind() {
+  public BigDecimal getSmallBlindAmount() {
     return this.smallBlindAmt;
   }
 }

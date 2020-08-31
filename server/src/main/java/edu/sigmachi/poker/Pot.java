@@ -60,9 +60,7 @@ public class Pot {
         }
       }
     }
-    return new Pot(PotType.MAIN, newBet, newPotMap);
-    
-    
+    return new Pot(PotType.SIDE, newBet, newPotMap);
   }
   
   public void setCurrentPot(BigDecimal currentPot) {
@@ -87,5 +85,14 @@ public class Pot {
 
   public Set<Player> getPlayersInPot() {
     return this.playerToContribution.keySet();
+  }
+
+  public Pot makeCopy() {
+    HashMap<Player, BigDecimal> playerToContributionCopy = new HashMap<>();
+    for (Player player: this.playerToContribution.keySet()) {
+      playerToContributionCopy.put(player.makeCopy(), this.playerToContribution.get(player));
+    }
+    return new Pot (this.potType, this.currentBet,
+            playerToContributionCopy);
   }
 }
