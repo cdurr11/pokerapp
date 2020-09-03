@@ -2,7 +2,8 @@ package edu.sigmachi.poker;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List; 
+import java.util.List;
+import java.util.Random;
 
 public class Deck {
   private List<Card> deck;
@@ -14,7 +15,7 @@ public class Deck {
         deck.add(new Card(suit, rank));
       }
     }
-    Collections.shuffle(deck);
+    Collections.shuffle(deck, new Random(10));
   }
 
   public Card drawCard() {
