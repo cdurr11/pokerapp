@@ -31,20 +31,18 @@ public class CommunityCards {
     	communityCards.add(deck.drawCard());
     	communityCards.add(deck.drawCard());
     	communityCards.add(deck.drawCard());
-    	checkRep();
     }
     
     private void drawCard(Deck deck){
     	communityCards.add(deck.drawCard());
-    	checkRep();
     }
 
     public List<Card> getCurrentCommunityCards(){
-      List<Card> communityCardsCopy = new ArrayList<Card>(this.communityCards);
+      List<Card> communityCardsCopy = new ArrayList<>(this.communityCards);
       checkRep();
       return communityCardsCopy;
     }
-    
+
     public CommunityCardState getState() {
       return this.state;
     }
@@ -65,14 +63,14 @@ public class CommunityCards {
       assert communityCards.size() == 0 || communityCards.size() == 3
           || communityCards.size() == 4 || communityCards.size() == 5;
 
-      if (this.getState() == CommunityCardState.PREFLOP) {
-        assert this.getCurrentCommunityCards().size() == 0;
-      } else if (this.getState() == CommunityCardState.FLOP) {
-        assert this.getCurrentCommunityCards().size() == 3;
-      } else if (this.getState() == CommunityCardState.TURN) {
-        assert this.getCurrentCommunityCards().size() == 4;
+      if (this.state == CommunityCardState.PREFLOP) {
+        assert this.communityCards.size() == 0;
+      } else if (this.state == CommunityCardState.FLOP) {
+        assert this.communityCards.size() == 3;
+      } else if (this.state == CommunityCardState.TURN) {
+        assert this.communityCards.size() == 4;
       } else {
-        assert this.getCurrentCommunityCards().size() == 5;
+        assert this.communityCards.size() == 5;
       }
     }
 }
