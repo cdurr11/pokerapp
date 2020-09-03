@@ -9,6 +9,8 @@ public class Player {
   private BigDecimal balance;
   private Card card1;
   private Card card2;
+  private BigDecimal currentRoundBet;
+  private BigDecimal totalHandBet;
   private boolean inPlay = true;
   private boolean inHand = true;
   private boolean allIn = false;
@@ -24,16 +26,20 @@ public class Player {
   	this.playerName = id;
   	this.sessionID = sessionID;
     this.balance = balance;
+    this.currentRoundBet = new BigDecimal("0.00");
+    this.totalHandBet = new BigDecimal("0.00");
   }
 
   private Player(String id, UUID sessionID, BigDecimal balance,
-                 Card card1, Card card2, boolean inPlay, boolean inHand,
-                 boolean allIn) {
+                 Card card1, Card card2, BigDecimal currentRoundBet,
+                 BigDecimal totalHandBet, boolean inPlay, boolean inHand, boolean allIn) {
     this.playerName = id;
     this.sessionID = sessionID;
     this.balance = balance;
     this.card1 = card1;
     this.card2 = card2;
+    this.currentRoundBet = currentRoundBet;
+    this.totalHandBet = totalHandBet;
     this.inPlay = inPlay;
     this.inHand = inHand;
     this.allIn = allIn;
@@ -41,6 +47,30 @@ public class Player {
   
   private void checkRep() {
       assert (this.balance.compareTo(BigDecimal.ZERO) >= 0);
+  }
+
+  public void resetCurrentRoundBet() {
+    this.currentRoundBet = new BigDecimal("0.00");
+  }
+
+  public void increaseCurrentRoundBet(BigDecimal increaseAmount) {
+    this.currentRoundBet = this.currentRoundBet.add(increaseAmount);
+  }
+
+  public BigDecimal getCurrentRoundBet() {
+    return this.currentRoundBet;
+  }
+
+  public void resetTotalHandBet() {
+    this.totalHandBet = new BigDecimal("0.00");
+  }
+
+  public void increaseTotalHandBet(BigDecimal increaseAmount) {
+    this.totalHandBet = this.totalHandBet.add(increaseAmount);
+  }
+
+  public BigDecimal getTotalHandBet() {
+    return this.totalHandBet;
   }
 
 	public void drawHand(Deck deck) {
@@ -66,8 +96,9 @@ public class Player {
   }
   
   public void resetHand() {
-    this.inHand = false;
+    this.inHand = true;
     this.allIn = false;
+    this.totalHandBet = new BigDecimal("0.00");
   }
   
   public boolean getAllIn() {
@@ -124,7 +155,12 @@ public class Player {
   public String getName() {
       return playerName;
   }
-  
+
+  @Override
+  public String toString() {
+    return this.playerName;
+  }
+
   @Override 
   public boolean equals(Object that) {
     if (!(that instanceof Player)) {
@@ -140,8 +176,8 @@ public class Player {
 
   public Player makeCopy() {
     return new Player(this.playerName, this.sessionID, this.balance,
-            this.card1, this.card2, this.inPlay, this.inHand,
-            this.allIn);
+            this.card1, this.card2, this.currentRoundBet, this.totalHandBet,
+            this.inPlay, this.inHand, this.allIn);
   }
 }
 
