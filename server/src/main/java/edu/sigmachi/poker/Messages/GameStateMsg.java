@@ -1,14 +1,18 @@
 package edu.sigmachi.poker.Messages;
 
+import edu.sigmachi.poker.Card;
+import edu.sigmachi.poker.CommunityCardState;
 import edu.sigmachi.poker.Player;
 import edu.sigmachi.poker.Pot;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class GameStateMsg {
-  public enum GameStateMsgType {AFTERACTION, COMPLETION}
+  public enum GameStateMsgType { AFTERACTION, ROBCOMPLETION, AFTERHAND, PLAYHAND }
 
+  private final Map<String, Player> table;
   private final List<Player> activePlayers;
   private final List<Player> currentPlayersInHand;
   private final String dealerPlayerName;
@@ -20,12 +24,17 @@ public class GameStateMsg {
   private final String currentPlayerName;
   private final int currentPlayerIndex;
   private final List<Pot> pots;
+  private final List<Card> communityCards;
+  private final CommunityCardState communityCardState;
   private final GameStateMsgType msgType;
 
-  public GameStateMsg(List<Player> activePlayers, List<Player> currentPlayersInHand, List<Pot> pots,
+  public GameStateMsg(Map<String, Player> table, List<Player> activePlayers, List<Player> currentPlayersInHand, List<Pot> pots,
                       String dealerPlayerName, int dealerIndex, String smallBlindPlayerName,
                       int smallBlindIndex, String bigBlindPlayerName, int bigBlindIndex,
-                      String currentPlayerName, int currentPlayerIndex, GameStateMsgType msgType) {
+                      String currentPlayerName, int currentPlayerIndex, List<Card> communityCards,
+                      CommunityCardState communityCardState, GameStateMsgType msgType) {
+
+    this.table = table;
     this.activePlayers = activePlayers;
     this.currentPlayersInHand = currentPlayersInHand;
     this.dealerPlayerName = dealerPlayerName;
@@ -37,9 +46,14 @@ public class GameStateMsg {
     this.currentPlayerName = currentPlayerName;
     this.currentPlayerIndex = currentPlayerIndex;
     this.pots = pots;
+    this.communityCards = communityCards;
+    this.communityCardState = communityCardState;
     this.msgType = msgType;
   }
 
+  public Map<String, Player> getTable() {
+    return this.table;
+  }
   public List<Player> getActivePlayers() {
     return this.activePlayers;
   }
@@ -86,5 +100,13 @@ public class GameStateMsg {
 
   public GameStateMsgType getMsgType() {
     return this.msgType;
+  }
+
+  public CommunityCardState getCommunityCardState() {
+    return this.communityCardState;
+  }
+
+  public List<Card> getCommunityCards() {
+    return this.communityCards;
   }
 }
