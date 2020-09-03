@@ -58,6 +58,8 @@ public class Table {
 
   private Player currentPlayer;
   private int currentPlayerIndex;
+
+  private Player mostRecentRaiser;
   
   //The player who made the last action after the river 
   
@@ -143,9 +145,11 @@ public class Table {
     List<Player> winners = new ArrayList<>();
 //    server.getBroadcastOperations().sendEvent("startOfRound", SORMsg);
     while (currentPlayersInHand.size() > 1) {
+      this.mostRecentRaiser = null;
       RoundOfBettingRetCode roundOfBettingResult = roundOfBetting(firstRound);
       firstRound = false;
       communityCards.draw(this.deck);
+      this.gameStateQueue.put(this.makeGameStateMsg(GameStateMsg.GameStateMsgType.PLAYHAND));
       // Need to propagate this to the Game class so that game can be restarted
       if (roundOfBettingResult != RoundOfBettingRetCode.NORMAL) {
         return roundOfBettingResult;
@@ -159,11 +163,14 @@ public class Table {
         winners = showDown();
         break;
       }
+      this.resetCurrentRoundBets();
+      this.currentBet = new BigDecimal("0.00");
     }
     this.allocateWinnings(winners);
+    this.gameStateQueue.put(this.makeGameStateMsg(GameStateMsg.GameStateMsgType.AFTERHAND));
+    this.resetPlayerHand();
     return RoundOfBettingRetCode.NORMAL;
   }
-
 
   /**
    * Function to reset everything before the next hand starts. Need to iterate who
@@ -235,25 +242,32 @@ public class Table {
    */
   private RoundOfBettingRetCode roundOfBetting(boolean firstRound) throws InterruptedException {
     int toAct;
-    boolean canCheck = true;
+    boolean noOneRaised = true;
 	  if (firstRound) {
-	    canCheck = false;
+      noOneRaised = false;
 	    this.currentPlayerIndex = (this.bigBlindIndex + 1) % activePlayers.size();
 	    this.currentPlayer = activePlayers.get(this.currentPlayerIndex);
-	    toAct = currentPlayersInHand.size() - 1; // -2 for blinds but + 1 bc big blind can reraise = -1
+	    toAct = currentPlayersInHand.size();
+	    this.mostRecentRaiser = this.bigBlindPlayer;
 	  }
 	  else {
 	    this.currentPlayerIndex = findNextPlayerIndexToStart();
-	    this.currentPlayer = activePlayers.get(this.currentPlayerIndex);;
+	    this.currentPlayer = activePlayers.get(this.currentPlayerIndex);
+//	    System.out.println("currentPlayersInHand: " + this.currentPlayersInHand.size());
 	    toAct = currentPlayersInHand.size();
 	  }
     
     if (communityCards.getState() == CommunityCardState.PREFLOP) {
       this.currentBet = this.bigBlindAmt;
     }
-    
+
     while (toAct > 0) {
+      boolean canCheck = noOneRaised || (this.currentPlayer == this.mostRecentRaiser);
       Set<Actions> availableActions = getAvailableActions(this.currentPlayer, canCheck);
+//      if (toAct == 1 && noOneRaised) {
+//        toAct--;
+//        continue;
+//      }
       if (currentPlayer.getAllIn()) {
         toAct--;
         incrementCurrentPlayer();
@@ -261,6 +275,7 @@ public class Table {
       }
       // TODO send ServerActionResponseMsg here
       InstantGameMsg instantGameMsg;
+
       while (true) {
         // take messages until we don't get a PrintGameStateMsg
         instantGameMsg = instantGameMsgQueue.take();
@@ -275,8 +290,12 @@ public class Table {
         }
         else if (instantGameMsg instanceof ClientActionMsg) {
           // Check to make sure that the message we get is from the right player
+//          System.out.println("PlayerName: " + ((ClientActionMsg) instantGameMsg).getPlayerName());
+//          System.out.println("CurrentPlayer: " + this.currentPlayer.getName());
           if (((ClientActionMsg) instantGameMsg).getPlayerName().equals(currentPlayer.getName())) {
             break;
+          } else {
+            throw new RuntimeException("Got Request From Player out of Turn");
           }
         }
         else {
@@ -284,7 +303,6 @@ public class Table {
         }
       }
       ClientActionMsg clientMsg = (ClientActionMsg) instantGameMsg;
-
       if (clientMsg.getAction() == Actions.FOLD) {
         checkIsValidAction(Actions.FOLD, availableActions);
         this.currentPlayer.fold();
@@ -294,31 +312,55 @@ public class Table {
         checkIsValidAction(Actions.CHECK, availableActions);
       } 
       else if (clientMsg.getAction() == Actions.CALL) {
-        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, BigDecimal.ZERO);
+        BigDecimal callDifference = this.currentBet.subtract(this.currentPlayer.getCurrentRoundBet());
+        this.currentPlayer.adjustBalance(new BigDecimal("-1").multiply(callDifference));
+        this.currentPlayer.increaseCurrentRoundBet(callDifference);
+        this.currentPlayer.increaseTotalHandBet(callDifference);
+        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, this.currentPlayer.getTotalHandBet());
       }
       else if (clientMsg.getAction() == Actions.RAISE) {
-        canCheck = false;
-        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, clientMsg.getRaiseAmount()); 
+        // TODO ensure that raise is larger than call amount
+        noOneRaised = false;
+        BigDecimal callDifference = this.currentBet.subtract(this.currentPlayer.getCurrentRoundBet());
+        // Cover the call and then add the raise amount
+        BigDecimal totalRaiseAmount = callDifference.add(clientMsg.getRaiseAmount());
+        this.currentPlayer.adjustBalance(new BigDecimal("-1").multiply(totalRaiseAmount));
+        this.currentPlayer.increaseCurrentRoundBet(totalRaiseAmount);
+        this.currentPlayer.increaseTotalHandBet(totalRaiseAmount);
+        this.currentBet = this.currentBet.add(clientMsg.getRaiseAmount());
+        this.mostRecentRaiser = this.currentPlayer;
+        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, this.currentPlayer.getTotalHandBet());
         toAct = this.currentPlayersInHand.size();
       }
       else if (clientMsg.getAction() == Actions.ALLIN) {
-        canCheck = false;
+        noOneRaised = false;
         this.currentPlayer.goAllIn();
         this.currentPlayersInHand.remove(currentPlayer);
         BigDecimal playerBalance = table.get(clientMsg.getPlayerName()).getBalance();
-        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, playerBalance);
+        this.currentPlayer.adjustBalance(new BigDecimal("-1").multiply(playerBalance));
+        this.currentPlayer.increaseCurrentRoundBet(playerBalance);
+        this.currentPlayer.increaseTotalHandBet(playerBalance);
+        BettingCalculator.bet(currentPlayer, clientMsg.getAction(), pots, activePlayers, this.currentPlayer.getTotalHandBet());
+        if (playerBalance.compareTo(this.currentBet) == 1) {
+          this.currentBet = playerBalance;
+        }
       }
       toAct--;
       incrementCurrentPlayer();
       this.gameStateQueue.put(this.makeGameStateMsg(GameStateMsg.GameStateMsgType.AFTERACTION));
     }
-    this.gameStateQueue.put(this.makeGameStateMsg(GameStateMsg.GameStateMsgType.COMPLETION));
+    this.gameStateQueue.put(this.makeGameStateMsg(GameStateMsg.GameStateMsgType.ROBCOMPLETION));
     return RoundOfBettingRetCode.NORMAL;
   }
 
   private void incrementCurrentPlayer() {
-    currentPlayerIndex = (currentPlayerIndex + 1) % currentPlayersInHand.size();
-    currentPlayer = currentPlayersInHand.get(currentPlayerIndex);
+    Player potentialCurrentPlayer;
+    do {
+      currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.size();
+      potentialCurrentPlayer = activePlayers.get(currentPlayerIndex);
+    } while (!potentialCurrentPlayer.getHandStatus());
+    this.currentPlayer = potentialCurrentPlayer;
+//    System.out.println(this.currentPlayer);
   }
 
   private void checkIsValidAction(Actions action, Set<Actions> availableActions) {
@@ -331,9 +373,10 @@ public class Table {
    */
   private int findNextPlayerIndexToStart() {
     for (int i = 0; i < activePlayers.size(); i++) {
-      Player curPlayer = activePlayers.get((i + smallBlindIndex) % activePlayers.size());
+      int nextPlayerIndex = (i + smallBlindIndex) % activePlayers.size();
+      Player curPlayer = activePlayers.get(nextPlayerIndex);
       if (curPlayer.getHandStatus()) {
-        return i;
+        return nextPlayerIndex;
       }
     }
     throw new RuntimeException("Did not find a valid start player");
@@ -371,7 +414,14 @@ public class Table {
   private void postBlinds() {
     Pot mainPot = this.pots.get(0);
     mainPot.contributePot(this.smallBlindPlayer, this.smallBlindAmt);
+    this.smallBlindPlayer.increaseCurrentRoundBet(this.smallBlindAmt);
+    this.smallBlindPlayer.increaseTotalHandBet(this.smallBlindAmt);
+    this.smallBlindPlayer.adjustBalance(new BigDecimal("-1").multiply(this.smallBlindAmt));
     mainPot.contributePot(this.bigBlindPlayer, this.bigBlindAmt);
+    this.bigBlindPlayer.increaseCurrentRoundBet(this.bigBlindAmt);
+    this.bigBlindPlayer.increaseTotalHandBet(this.bigBlindAmt);
+    this.bigBlindPlayer.adjustBalance(new BigDecimal("-1").multiply(this.bigBlindAmt));
+
   }
 
   public void adjustPlayerBalance(String playerName, BigDecimal dollarAmount) {
@@ -402,16 +452,22 @@ public class Table {
     List<Pot> potsCopy = this.pots.stream()
             .map(Pot::makeCopy)
             .collect(Collectors.toList());
+    List<Card> communityCards = this.communityCards.getCurrentCommunityCards();
 
+    HashMap<String, Player> tableCopy = new HashMap<>();
+    for (String playerName: this.table.keySet()) {
+      tableCopy.put(playerName, this.table.get(playerName).makeCopy());
+    }
+
+    CommunityCardState communityCardState = this.communityCards.getState();
     String dealerPlayerName = this.dealerPlayer.getName();
     String smallBlindPlayerName = this.smallBlindPlayer.getName();
     String bigBlindPlayerName = this.bigBlindPlayer.getName();
     String currentPlayerName = this.currentPlayer.getName();
-
-    return new GameStateMsg(activePlayersCopy, currentPlayersInHandCopy, potsCopy,
+    return new GameStateMsg(table, activePlayersCopy, currentPlayersInHandCopy, potsCopy,
             dealerPlayerName, this.dealerIndex, smallBlindPlayerName, this.smallBlindIndex,
             bigBlindPlayerName, this.bigBlindIndex, currentPlayerName, this.currentPlayerIndex,
-            msgType);
+            communityCards, communityCardState, msgType);
   }
   
   /**
@@ -426,7 +482,19 @@ public class Table {
     }
     return playersToBalances;
   }
-  
+
+  private void resetCurrentRoundBets() {
+    for (Player player: this.activePlayers) {
+      player.resetCurrentRoundBet();
+    }
+  }
+
+  private void resetPlayerHand() {
+    for (Player player: this.activePlayers) {
+      player.resetHand();
+    }
+  }
+
   /**
    * Gets the name of the current dealer
    * @return dealer username
