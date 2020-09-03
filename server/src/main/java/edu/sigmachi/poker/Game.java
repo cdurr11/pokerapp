@@ -5,49 +5,95 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.corundumstudio.socketio.SocketIOServer;
 
-import edu.sigmachi.poker.Messages.AfterRoundMsg;
-import edu.sigmachi.poker.Messages.DisconnectConnectMsg;
-import edu.sigmachi.poker.Messages.InstantGameMsg;
-import edu.sigmachi.poker.Messages.StartMsg;
+import edu.sigmachi.poker.Messages.*;
 
 public class Game {
   private final String gamePassword;
   private Set<String> allPlayersEver;
-  private Map<String, BigDecimal> playersToBalances;
-  //TODO replace this with the cards
-  private Map<String, String> playersToCards;
+  private Map<String, BigDecimal> playersToLastBalance;
+
   private final Queue<DisconnectConnectMsg> connectionMsgQueue;
   private final Queue<AfterRoundMsg> afterRoundMsgQueue;
   private final BlockingQueue<InstantGameMsg> instantGameMsgQueue;
+  private final BlockingQueue<GameStateMsg> gameStateMsgQueue;
+  // TODO probably want to set blinds as parameter to start message.
+  private BigDecimal bigBlindValue = new BigDecimal("20.00");
+  private BigDecimal smallBlindValue = new BigDecimal("10.00");
   
-  
-  public Game(SocketIOServer server, String gamePassword,Queue<DisconnectConnectMsg> connectionMsgQueue, 
+  SocketIOServer server;
+
+  public Game(SocketIOServer server, String gamePassword, Queue<DisconnectConnectMsg> connectionMsgQueue,
       Queue<AfterRoundMsg> afterRoundMsgQueue, BlockingQueue<InstantGameMsg> instantGameMsgQueue) {
     this.gamePassword = gamePassword;
     this.connectionMsgQueue = connectionMsgQueue;
     this.instantGameMsgQueue = instantGameMsgQueue;
     this.afterRoundMsgQueue = afterRoundMsgQueue;
+    this.gameStateMsgQueue = new LinkedBlockingQueue<>();
+    this.server = server;
+  }
+
+  private void processConnectionMsg(DisconnectConnectMsg msg, Table gameTable) {
+    if (msg instanceof ConnectionMsg) {
+      ConnectionMsg connectMsg = (ConnectionMsg) msg;
+      String playerName = connectMsg.getPlayerName();
+      gameTable.addPlayer(connectMsg.getPlayerName(), connectMsg.getSessionID());
+    } else {
+      DisconnectionMsg disconnectMsg = (DisconnectionMsg) msg;
+      gameTable.removePlayer(disconnectMsg.getSessionID());
+    }
   }
   
-  public void start() throws InterruptedException {
-    while (!(this.instantGameMsgQueue.take() instanceof StartMsg)) {
-      System.out.println("You Must Start The Game First!");
+  private void processAfterRoundMsg(AfterRoundMsg msg, Table gameTable) {
+    if (msg instanceof AddPlayerMoneyMsg) {
+      AddPlayerMoneyMsg moneyMsg = (AddPlayerMoneyMsg) msg;
+      gameTable.adjustPlayerBalance(moneyMsg.getPlayerName(), moneyMsg.getDollarAmount());
     }
-    System.out.println("STARTING GAME");
-//    while (true) {
-      //check and handle login requests here
-//      table.addPlayer();
-//      table.removePlayer();
-//      //handle consoleMessages here
-//        // Modify table however console messages say
-//      
-//      
-//      //perform a round
-//      table.doRound(server, clientMsgQueue)
-      //send message to the front-end
-//    }
+  }
+
+  public void start() throws InterruptedException {
+    // TODO eventually this should be an argument when initializing from console 
+    BigDecimal initialBuyIn = new BigDecimal("10.00");
+    Table gameTable = new Table(this.server, this.smallBlindValue, this.bigBlindValue, 
+        this.instantGameMsgQueue, this.gameStateMsgQueue, initialBuyIn);
+    // This is the loading lobby, just wait until people join
+    while (true) {
+      InstantGameMsg instantGameMsg = this.instantGameMsgQueue.take();
+      // process
+      while (!connectionMsgQueue.isEmpty()) {
+        DisconnectConnectMsg msg = connectionMsgQueue.poll();
+        assert msg != null;
+        processConnectionMsg(msg, gameTable);
+      }
+      if (!(instantGameMsg instanceof StartMsg)) {
+        System.out.println("You Must Start The Game First!");
+      }
+      else {
+        if (gameTable.getActivePlayers().size() >= 5) {
+          System.out.println("STARTING GAME");
+          break;
+        }
+        else {
+          System.out.println("5 PLAYERS ARE NEEDED TO START THE GAME");
+        }
+      }
+    }
+    // Left the loading lobby, now into the game loop
+    while (true) {
+      while (!connectionMsgQueue.isEmpty()) {
+        DisconnectConnectMsg msg = connectionMsgQueue.poll();
+        assert msg != null;
+        processConnectionMsg(msg, gameTable);
+      }
+      while (!afterRoundMsgQueue.isEmpty()) {
+        AfterRoundMsg msg = afterRoundMsgQueue.poll();
+        assert msg != null;
+        processAfterRoundMsg(msg, gameTable);
+      }
+      gameTable.playHand();
+    }
   }
 }

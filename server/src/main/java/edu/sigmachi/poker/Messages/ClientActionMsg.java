@@ -5,7 +5,7 @@ import java.math.RoundingMode;
 
 public class ClientActionMsg implements InstantGameMsg {
   
-  public enum Actions {CALL, CHECK, FOLD, RAISE};
+  public enum Actions {CALL, CHECK, FOLD, RAISE, ALLIN};
   
   private String playerName;
   private String action;
@@ -37,7 +37,10 @@ public class ClientActionMsg implements InstantGameMsg {
     switch (this.action) {
       case "CALL":
         return Actions.CALL;
-      
+          
+      case "ALLIN":
+          return Actions.ALLIN;
+          
       case "CHECK":
         return Actions.CHECK;
         

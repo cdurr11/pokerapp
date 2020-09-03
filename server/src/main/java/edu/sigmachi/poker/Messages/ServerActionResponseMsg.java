@@ -26,6 +26,7 @@ public class ServerActionResponseMsg {
       List<String> mainPotContenders, BigDecimal mainPotValue, 
       List<String> sidePotContenders, BigDecimal sidePotValue) {
     
+    // TODO need to add possible actions
     this.playersToBalances = playersToBalances;
     this.playersToBets = playersToBets;
     this.currentTurn = currentTurn;
